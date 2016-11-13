@@ -5,8 +5,8 @@ import java.net.*;
  */
 public class LLP_Socket {
     private static final int MAX_WINDOW_SIZE = 1024;
-    private LLP_Packet[] send_buffer;
-    private LLP_Packet[] receive_buffer;
+    private byte[] send_buffer;
+    private byte[] receive_buffer;
     private int sendSize;
     private int receiveSize;
     private int windowSize;
@@ -21,8 +21,8 @@ public class LLP_Socket {
         } catch (SocketException e) {
             e.printStackTrace();
         }
-        send_buffer = new LLP_Packet[MAX_WINDOW_SIZE];
-        receive_buffer = new LLP_Packet[MAX_WINDOW_SIZE];
+        send_buffer = new byte[MAX_WINDOW_SIZE];
+        receive_buffer = new byte[MAX_WINDOW_SIZE];
         sendSize = 0;
         receiveSize = 0;
         windowSize = 50; // default window size, unless initialized by the application
@@ -33,7 +33,7 @@ public class LLP_Socket {
         //send syn
         socket.connect(address, port);
         byte[] header = createHeader();
-        socket.send(new DatagramPacket())
+//        socket.send(new DatagramPacket())
         //receive syn/ack and initialize remote SN
         //send ack
     }
@@ -80,6 +80,7 @@ public class LLP_Socket {
     public void setWindowSize(int windowSize) {
         this.windowSize = windowSize;
     }
+
     public byte[] createHeader() {
 
     }
