@@ -37,4 +37,8 @@ public class LLP_Packet {
         newHeader = temp.array();
         return newHeader;
     }
+
+    public byte[] getHeader() {
+        return header;
+    }
 }

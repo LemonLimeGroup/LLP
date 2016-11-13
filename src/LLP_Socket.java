@@ -32,7 +32,6 @@ public class LLP_Socket {
     public void connect(InetAddress address, int port) {
         //send syn
         socket.connect(address, port);
-        byte[] header = createHeader();
 //        socket.send(new DatagramPacket())
         //receive syn/ack and initialize remote SN
         //send ack
@@ -79,10 +78,6 @@ public class LLP_Socket {
 
     public void setWindowSize(int windowSize) {
         this.windowSize = windowSize;
-    }
-
-    public byte[] createHeader() {
-
     }
 }
 
