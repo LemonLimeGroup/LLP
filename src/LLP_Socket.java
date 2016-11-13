@@ -1,6 +1,4 @@
-import java.io.IOException;
 import java.net.*;
-import java.io.Closeable;
 
 /**
  * Created by Sally on 11/12/16.
@@ -9,8 +7,12 @@ public class LLP_Socket {
     private static final int MAX_WINDOW_SIZE = 1024;
     private LLP_Packet[] send_buffer;
     private LLP_Packet[] receive_buffer;
+    private int sendSize;
+    private int receiveSize;
     private int windowSize;
     private DatagramSocket socket;
+    private int localSN;
+    private int remoteSN;
 
 
     public LLP_Socket(String type) throws IllegalArgumentException {
@@ -21,37 +23,55 @@ public class LLP_Socket {
         }
         send_buffer = new LLP_Packet[MAX_WINDOW_SIZE];
         receive_buffer = new LLP_Packet[MAX_WINDOW_SIZE];
+        sendSize = 0;
+        receiveSize = 0;
         windowSize = 50; // default window size, unless initialized by the application
+        localSN = 0;
     }
 
     public void connect(InetAddress address, int port) {
-
+        //send syn
+        //receive syn/ack and initialize remote SN
+        //send ack
     }
 
     public LLP_Socket accept() {
         // not in udp, we must implement
+        // receive syn and initialize remote sequence number
+        // send syn/ack
+        // receive ack
         return null;
     }
 
     public void bind(SocketAddress address) {
-
+        try {
+            socket.bind(address);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
     }
 
     public void close() {
-
+        socket.close();
     }
 
-    public boolean isBufferFull() {
-        return false;
+    public boolean isSendBufferFull() {
+        return send_buffer.length == sendSize + 1;
     }
 
-    public void receive(LLP_Packet packet) {
-
-
+    public LLP_Packet receive(int readSize) {
+        // checksum (corrupt?)
+        //timeout (lost?)
+        //out of order received pckt ignored
+        // successful?
+        // store the packet without the header
+        //return received backets
+        return null;
     }
 
     public void send(LLP_Packet packet) {
-
+        // LLP header
+        //
     }
 
     public void setWindowSize(int windowSize) {
