@@ -1,4 +1,3 @@
-import java.io.IOException;
 import java.net.*;
 
 /**
@@ -81,8 +80,8 @@ public class LLP_Socket {
     public void setWindowSize(int windowSize) {
         this.windowSize = windowSize;
     }
-
     public byte[] createHeader() {
 
     }
 }
+
