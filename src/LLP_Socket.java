@@ -15,7 +15,7 @@ public class LLP_Socket {
     private int remoteSN;
 
 
-    public LLP_Socket(String type) throws IllegalArgumentException {
+    public LLP_Socket() throws IllegalArgumentException {
         try {
             socket = new DatagramSocket();
         } catch (SocketException e) {
@@ -77,4 +77,10 @@ public class LLP_Socket {
     public void setWindowSize(int windowSize) {
         this.windowSize = windowSize;
     }
+
+
+    public void createHeader(LLP_Packet packet) {
+
+    }
 }
+

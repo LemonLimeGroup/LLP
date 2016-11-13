@@ -37,5 +37,4 @@ public class LLP_Packet {
         newHeader = temp.array();
         return newHeader;
     }
-
 }
