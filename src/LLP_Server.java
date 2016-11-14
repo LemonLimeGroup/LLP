@@ -1,3 +1,4 @@
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -27,11 +28,16 @@ public  class LLP_Server {
     public void start() {
         socket = new LLP_Socket(port);
         socket.accept();
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        while(true) {
-            baos.write(socket.receive(1024), 0, 1024);
-            System.out.println(new String(baos.toByteArray(), StandardCharsets.UTF_8));
-        }
+        byte[] bytes = socket.receive(1024);
+//        System.out.println(bytes.length);
+//        for(int i = 0; i < bytes.length / 2; i++)
+//        {
+//            byte temp = bytes[i];
+//            bytes[i] = bytes[bytes.length - i - 1];
+//            bytes[bytes.length - i - 1] = temp;
+//        }
+        String data = new String(bytes);
+        System.out.println(data);
     }
 
     public static void main(String[] args) {

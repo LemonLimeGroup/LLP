@@ -72,10 +72,5 @@ public class LLP_Client {
                 default: System.out.println("Command not recognized.");
             }
         }
-
-
-
-        System.out.println(client.ipAddress + " " + client.port); // Display the string.
-
     }
 }

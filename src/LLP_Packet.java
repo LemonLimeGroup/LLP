@@ -17,6 +17,20 @@ public class LLP_Packet {
     private int windowSize;
     private byte[] data;
 
+
+    public LLP_Packet() {
+        this.sequenceNum = 0;
+        this.ackNum = 0;
+        this.checksum = 0;
+        this.windowSize = 0;
+        this.dataOffset = 0; // Setting this value breaks the packet parsing; need to fix
+        this.ACK = 0;
+        this.RST = 0;
+        this.SYN = 0;
+        this.FIN = 0;
+        this.data = null;
+    }
+
     public LLP_Packet(int sequenceNum, int ackNum, int checksum, int windowSize) {
         this.sequenceNum = sequenceNum;
         this.ackNum = ackNum;
@@ -69,45 +83,83 @@ public class LLP_Packet {
         return createHeader();
     }
 
-    public void parseHeader() {
-        ByteBuffer wrapped = ByteBuffer.wrap(createHeader()); // big-endian by default
-        this.sequenceNum = wrapped.getInt();
-        this.ackNum = wrapped.getInt();
+    public static LLP_Packet parsePacket(byte[] rawPacket) {
+        ByteBuffer wrapped = ByteBuffer.wrap(rawPacket); // big-endian by default
+        LLP_Packet packet = new LLP_Packet();
+
+        // Parse Data
+        packet.setSequenceNum(wrapped.getInt()); // 32-bit seq num
+        packet.setAckNum(wrapped.getInt()); // 32-bit  ack num
 
         int rest = wrapped.getInt();
         String binRest = String.format("%32s", Integer.toBinaryString(rest)).replace(' ', '0');
 
-        this.checksum = Integer.parseInt(binRest.substring(2, 18), 2);
+        packet.setChecksum(Integer.parseInt(binRest.substring(2, 18), 2));  // index by bits
+        packet.setACKFlag(Integer.parseInt(binRest.substring(18, 19), 2));
+        packet.setRSTFlag(Integer.parseInt(binRest.substring(19, 20), 2));
+        packet.setSYNFlag(Integer.parseInt(binRest.substring(20, 21), 2));
+        packet.setFINFlag(Integer.parseInt(binRest.substring(21, 22), 2));
+        packet.setWindowSize(Integer.parseInt(binRest.substring(22, 32), 2));
 
-        this.ACK = Integer.parseInt(binRest.substring(18, 19), 2);
-        this.RST = Integer.parseInt(binRest.substring(19, 20), 2);
-        this.SYN = Integer.parseInt(binRest.substring(20, 21), 2);
-        this.FIN = Integer.parseInt(binRest.substring(21, 22), 2);
-        this.windowSize = Integer.parseInt(binRest.substring(22, 32), 2);
+        packet.setData(Arrays.copyOfRange(rawPacket, 12, rawPacket.length)); // index by bytes
+
+        return packet;
     }
 
     public void setACKFlag(boolean enabled) {
         this.ACK = enabled ? 1 : 0;
     }
 
+    public void setACKFlag(int flag) {
+        this.ACK = flag;
+    }
+
     public void setRSTFlag(boolean enabled) {
         this.RST = enabled ? 1 : 0;
+    }
+
+    public void setRSTFlag(int flag) {
+        this.RST = flag;
     }
 
     public void setSYNFlag(boolean enabled) {
         this.SYN = enabled ? 1 : 0;
     }
 
+    public void setSYNFlag(int flag) {
+        this.SYN = flag;
+    }
+
     public void setFINFlag(boolean enabled) {
         this.FIN = enabled ? 1: 0;
+    }
+
+    public void setFINFlag(int flag) {
+        this.FIN = flag;
     }
 
     public void setData(byte[] data) {
         this.data = data;
     }
 
+    public void setWindowSize(int windowSize) {
+        this.windowSize = windowSize;
+    }
+
     public byte[] getData() {
         return this.data;
+    }
+
+    public void setSequenceNum(int sequenceNum) {
+        this.sequenceNum = sequenceNum;
+    }
+
+    public void setAckNum(int ackNum) {
+        this.ackNum = ackNum;
+    }
+
+    public void setChecksum(int checksum) {
+        this.checksum = checksum;
     }
 
     public byte[] createPacket() {
@@ -128,7 +180,7 @@ public class LLP_Packet {
     public static void main(String[] args) {
         LLP_Packet test = new LLP_Packet(456,40,50,50);
         byte[] bytes = test.getHeader();
-        test.parseHeader();
+        LLP_Packet testParsedPacket = LLP_Packet.parsePacket(bytes);
         System.out.println("Hello World!"); // Display the string.
     }
 }

@@ -170,20 +170,27 @@ public class LLP_Socket {
         // successful?
         // store the packet without the header
         // return received packets
-        byte[] receiveData = new byte[1024];
-        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+        byte[] rawReceiveData = new byte[1024];
+        DatagramPacket receivePacket = new DatagramPacket(rawReceiveData, rawReceiveData.length);
         try {
             socket.receive(receivePacket);
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        // create new byte array without the empty unused buffer
+        byte[] receiveData = new byte[receivePacket.getLength()];
+        System.arraycopy(rawReceiveData, 0, receiveData, 0, receiveData.length);
+        LLP_Packet receivedLLP = LLP_Packet.parsePacket(receiveData);
+
         System.out.println("RECEIVED DATA");
-        return receiveData;
+        return receivedLLP.getData();
     }
 
     public void send(byte[] data) {
         // LLP header
         LLP_Packet sendPacketLLP = new LLP_Packet(localSeq, ++remoteSeq, 0, windowSize); // TODO: compute window size & seq numbers
+        sendPacketLLP.setData(data);
         byte[] sendData = sendPacketLLP.createPacket();
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
         try {
