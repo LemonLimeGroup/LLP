@@ -1,18 +1,23 @@
+import javax.xml.crypto.Data;
+import java.io.IOException;
 import java.net.*;
 
 /**
  * Created by Sally on 11/12/16.
  */
 public class LLP_Socket {
-    private static final int MAX_WINDOW_SIZE = 1024;
+    private static final int MAX_WINDOW_SIZE = 20480;
     private byte[] send_buffer;
     private byte[] receive_buffer;
     private int sendSize;
     private int receiveSize;
     private int windowSize;
     private DatagramSocket socket;
-    private int localSN;
-    private int remoteSN;
+    private DatagramSocket connectionSocket; // TODO: Might be necessary for accept() to work properly
+    private int localSeq;
+    private int remoteSeq;
+    private InetAddress destAddress;
+    private int destPort;
 
 
     public LLP_Socket() throws IllegalArgumentException {
@@ -26,25 +31,122 @@ public class LLP_Socket {
         sendSize = 0;
         receiveSize = 0;
         windowSize = 50; // default window size, unless initialized by the application
-        localSN = 0;
+        localSeq = 0;
     }
 
+
+    public LLP_Socket(int localPort) throws IllegalArgumentException {
+        try {
+            socket = new DatagramSocket(localPort);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+        send_buffer = new byte[MAX_WINDOW_SIZE];
+        receive_buffer = new byte[MAX_WINDOW_SIZE];
+        sendSize = 0;
+        receiveSize = 0;
+        windowSize = 50; // default window size, unless initialized by the application
+        localSeq = 0;
+    }
+
+    /**
+     * Connect to remote address at specified InetAddress.
+     * Initiates a three-way handshake with teh server.
+     * Local and remote sequence numbers initialized.
+     *
+     * @param address Address of remote host.
+     * @param port Port of remote host.
+     */
     public void connect(InetAddress address, int port) {
-        //send syn
-        socket.connect(address, port);
-//        socket.send(new DatagramPacket())
-        //receive syn/ack and initialize remote SN
-        //send ack
+        // Send SYN
+        System.out.println("SENDING SYN TO SERVER");
+        LLP_Packet synPacketLLP = new LLP_Packet(0, 0, 0, windowSize);
+        synPacketLLP.setSYNFlag(true);
+        byte[] synData = synPacketLLP.createPacket();
+
+        DatagramPacket synPacket = new DatagramPacket(synData, synData.length, address, port);
+        try {
+            socket.send(synPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Receive SYN-ACK & initialize remote Seq Num
+        System.out.println("WAITING FOR SYN-ACK FROM SERVER");
+        byte[] receiveData = new byte[1024]; // based on max data size
+        DatagramPacket recvSynAckPacket = new DatagramPacket(receiveData, receiveData.length);
+        try {
+            socket.receive(recvSynAckPacket); // TODO: Check sequence number etc. ; window allocation done around here
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Send ACK
+        System.out.println("SENDING ACK TO SERVER");
+        LLP_Packet ackPacketLLP = new LLP_Packet(1, 1, 0, windowSize); // TODO: compute these values instead of hardcoded
+        ackPacketLLP.setACKFlag(true);
+        byte[] ackData = ackPacketLLP.createPacket();
+        DatagramPacket ackPacket = new DatagramPacket(ackData, ackData.length, address, port);
+        try {
+            socket.send(ackPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        // TODO: update seq numbers
+
+        setDestAddress(address);
+        setDestPort(port);
+//        socket.connect(); // TODO: probably should be used somewhere
+        System.out.println("CONNECTION ESTABLISHED");
+        // Connection established completed for client-side
     }
 
+    /**
+     * Accepts a new connection.
+     * Handles server-side semantics of the three-way handshake.
+     *
+     * @return socket
+     */
     public LLP_Socket accept() {
-        // not in udp, we must implement
-        // receive syn and initialize remote sequence number
-        // send syn/ack
-        // receive ack
-        return null;
+        // Receive SYN
+        System.out.println("WAITING FOR SYN FROM CLIENT");
+        byte[] receiveData = new byte[1024];
+        // TODO: Check that packet has SYN, otherwise need to switch states / wait
+        DatagramPacket receiveSYN = new DatagramPacket(receiveData, receiveData.length);
+        try {
+            socket.receive(receiveSYN);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } // TODO: Initialize remote sequence number
+
+        System.out.println("SEND A SYN-ACK TO CLIENT");
+        // Send SYN-ACK
+        LLP_Packet synAckPacketLLP = new LLP_Packet(0, 1, 0, windowSize); // TODO: compute window size
+        synAckPacketLLP.setACKFlag(true);
+        synAckPacketLLP.setSYNFlag(true);
+        byte[] sendSYNACKData = synAckPacketLLP.createPacket();
+        DatagramPacket sendPacket = new DatagramPacket(sendSYNACKData, sendSYNACKData.length,
+                receiveSYN.getAddress(), receiveSYN.getPort());
+        try {
+            socket.send(sendPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // Receive ACK
+        byte[] receiveAckData = new byte[1024];
+        DatagramPacket receiveACK = new DatagramPacket(receiveAckData, receiveAckData.length);
+        try {
+            socket.receive(receiveACK);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("CONNECTION ACCEPTED");
+        // TODO: parse ACK and Seq Number
+        return null; // TODO: Not sure what to return -- tcp normally returns connection socket
     }
 
+    // TODO: This might be done with DatagramSocket()
     public void bind(SocketAddress address) {
         try {
             socket.bind(address);
@@ -61,23 +163,55 @@ public class LLP_Socket {
         return send_buffer.length == sendSize + 1;
     }
 
-    public LLP_Packet receive(int readSize) {
+    public byte[] receive(int readSize) {
         // checksum (corrupt?)
-        //timeout (lost?)
-        //out of order received pckt ignored
+        // timeout (lost?)
+        // out of order received pckt ignored
         // successful?
         // store the packet without the header
-        //return received backets
-        return null;
+        // return received packets
+        byte[] receiveData = new byte[1024];
+        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+        try {
+            socket.receive(receivePacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("RECEIVED DATA");
+        return receiveData;
     }
 
-    public void send(LLP_Packet packet) {
+    public void send(byte[] data) {
         // LLP header
-        //
+        LLP_Packet sendPacketLLP = new LLP_Packet(localSeq, ++remoteSeq, 0, windowSize); // TODO: compute window size & seq numbers
+        byte[] sendData = sendPacketLLP.createPacket();
+        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
+        try {
+            socket.send(sendPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.println("SENT DATA");
+    }
+
+    public byte[] getInputStream() {
+        return receive_buffer;
+    }
+
+    public byte[] getOutputStream() {
+        return send_buffer;
     }
 
     public void setWindowSize(int windowSize) {
         this.windowSize = windowSize;
+    }
+
+    public void setDestAddress(InetAddress address) {
+        this.destAddress = address;
+    }
+
+    public void setDestPort(int port) {
+        this.destPort = port;
     }
 }
 
