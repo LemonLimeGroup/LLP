@@ -1,4 +1,3 @@
-import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.net.*;
 
@@ -25,6 +24,8 @@ public class LLP_Socket {
             socket = new DatagramSocket();
         } catch (SocketException e) {
             e.printStackTrace();
+            System.out.println("Failed to create a socket");
+            System.exit(-1);
         }
         send_buffer = new byte[MAX_WINDOW_SIZE];
         receive_buffer = new byte[MAX_WINDOW_SIZE];
@@ -40,6 +41,8 @@ public class LLP_Socket {
             socket = new DatagramSocket(localPort);
         } catch (SocketException e) {
             e.printStackTrace();
+            System.out.println("Failed to create a socket");
+            System.exit(-1);
         }
         send_buffer = new byte[MAX_WINDOW_SIZE];
         receive_buffer = new byte[MAX_WINDOW_SIZE];
@@ -60,9 +63,9 @@ public class LLP_Socket {
     public void connect(InetAddress address, int port) {
         // Send SYN
         System.out.println("SENDING SYN TO SERVER");
-        LLP_Packet synPacketLLP = new LLP_Packet(0, 0, 0, windowSize);
+        LLP_Packet synPacketLLP = new LLP_Packet(localSeq, 0, 0, windowSize);
         synPacketLLP.setSYNFlag(true);
-        byte[] synData = synPacketLLP.createPacket();
+        byte[] synData = synPacketLLP.toArray();
 
         DatagramPacket synPacket = new DatagramPacket(synData, synData.length, address, port);
         try {
@@ -80,12 +83,13 @@ public class LLP_Socket {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        byte[] synAckArray = recvSynAckPacket.getData();
+        //TODO: get remote sequence number
         // Send ACK
         System.out.println("SENDING ACK TO SERVER");
         LLP_Packet ackPacketLLP = new LLP_Packet(1, 1, 0, windowSize); // TODO: compute these values instead of hardcoded
         ackPacketLLP.setACKFlag(true);
-        byte[] ackData = ackPacketLLP.createPacket();
+        byte[] ackData = ackPacketLLP.toArray();
         DatagramPacket ackPacket = new DatagramPacket(ackData, ackData.length, address, port);
         try {
             socket.send(ackPacket);
@@ -113,33 +117,48 @@ public class LLP_Socket {
         byte[] receiveData = new byte[1024];
         // TODO: Check that packet has SYN, otherwise need to switch states / wait
         DatagramPacket receiveSYN = new DatagramPacket(receiveData, receiveData.length);
-        try {
-            socket.receive(receiveSYN);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } // TODO: Initialize remote sequence number
+        boolean isSuccessful = false;
+        while (!isSuccessful) {
+            try {
+                //TODO: timeout?
+                socket.receive(receiveSYN);
+                isSuccessful = true;
+            } catch (IOException e) {
+                System.out.println("Did not receive packet. Trying again");
+            } // TODO: Initialize remote sequence number
+
+        }
 
         System.out.println("SEND A SYN-ACK TO CLIENT");
         // Send SYN-ACK
         LLP_Packet synAckPacketLLP = new LLP_Packet(0, 1, 0, windowSize); // TODO: compute window size
         synAckPacketLLP.setACKFlag(true);
         synAckPacketLLP.setSYNFlag(true);
-        byte[] sendSYNACKData = synAckPacketLLP.createPacket();
+        byte[] sendSYNACKData = synAckPacketLLP.toArray();
         DatagramPacket sendPacket = new DatagramPacket(sendSYNACKData, sendSYNACKData.length,
                 receiveSYN.getAddress(), receiveSYN.getPort());
-        try {
-            socket.send(sendPacket);
-        } catch (IOException e) {
-            e.printStackTrace();
+        isSuccessful = false;
+        while(!isSuccessful) {
+            try {
+                socket.send(sendPacket);
+                isSuccessful = true;
+            } catch (IOException e) {
+                System.out.println("Sending packet wasn't successful. Trying again.");
+            }
+
         }
 
         // Receive ACK
         byte[] receiveAckData = new byte[1024];
         DatagramPacket receiveACK = new DatagramPacket(receiveAckData, receiveAckData.length);
-        try {
-            socket.receive(receiveACK);
-        } catch (IOException e) {
-            e.printStackTrace();
+        isSuccessful = false;
+        while (!isSuccessful) {
+            try {
+                socket.receive(receiveACK);
+                isSuccessful = true;
+            } catch (IOException e) {
+                System.out.println("Receiving ACK failed. Trying again")
+            }
         }
         System.out.println("CONNECTION ACCEPTED");
         // TODO: parse ACK and Seq Number
@@ -152,6 +171,8 @@ public class LLP_Socket {
             socket.bind(address);
         } catch (SocketException e) {
             e.printStackTrace();
+            System.out.println("Failed to bind");
+            System.exit(-1);
         }
     }
 
@@ -191,7 +212,9 @@ public class LLP_Socket {
         // LLP header
         LLP_Packet sendPacketLLP = new LLP_Packet(localSeq, ++remoteSeq, 0, windowSize); // TODO: compute window size & seq numbers
         sendPacketLLP.setData(data);
-        byte[] sendData = sendPacketLLP.createPacket();
+        byte[] sendData = sendPacketLLP.toArray();
+        System.out.println(destAddress);
+        System.out.println(socket.getRemoteSocketAddress());
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
         try {
             socket.send(sendPacket);

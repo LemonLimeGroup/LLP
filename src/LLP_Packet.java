@@ -19,29 +19,11 @@ public class LLP_Packet {
 
 
     public LLP_Packet() {
-        this.sequenceNum = 0;
-        this.ackNum = 0;
-        this.checksum = 0;
-        this.windowSize = 0;
-        this.dataOffset = 0; // Setting this value breaks the packet parsing; need to fix
-        this.ACK = 0;
-        this.RST = 0;
-        this.SYN = 0;
-        this.FIN = 0;
-        this.data = null;
+        this(0, 0, 0, 0, 0, false, false, false, false);
     }
 
     public LLP_Packet(int sequenceNum, int ackNum, int checksum, int windowSize) {
-        this.sequenceNum = sequenceNum;
-        this.ackNum = ackNum;
-        this.checksum = checksum;
-        this.windowSize = windowSize;
-        this.dataOffset = 0; // Setting this value breaks the packet parsing; need to fix
-        this.ACK = 0;
-        this.RST = 0;
-        this.SYN = 0;
-        this.FIN = 0;
-        this.data = null;
+        this(sequenceNum, ackNum, 0, checksum, windowSize, false, false, false, false);
     }
 
     public LLP_Packet(int sequenceNum, int ackNum, int dataOffset, int checksum, int windowSize,
@@ -162,7 +144,7 @@ public class LLP_Packet {
         this.checksum = checksum;
     }
 
-    public byte[] createPacket() {
+    public byte[] toArray() {
         byte[] header = getHeader();
         byte[] data = getData();
         if (data == null) {
@@ -175,6 +157,7 @@ public class LLP_Packet {
         }
     }
 
+    //DELETE
     public static void main(String[] args) {
         LLP_Packet test = new LLP_Packet(456,40,50,50);
         byte[] bytes = test.getHeader();

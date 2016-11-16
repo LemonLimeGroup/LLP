@@ -59,6 +59,7 @@ public class LLP_Client {
             client = new LLP_Client(InetAddress.getByName(args[0]), Integer.parseInt(args[1]));
         } catch (UnknownHostException e){
             System.err.println("Caught UnknownHostException " + e.getMessage());
+            System.exit(-1);
         }
 
         boolean exit = false;
