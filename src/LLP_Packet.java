@@ -173,8 +173,6 @@ public class LLP_Packet {
             System.arraycopy(data, 0, combinedHeaderAndData, header.length, data.length);
             return combinedHeaderAndData;
         }
-
-
     }
 
     public static void main(String[] args) {

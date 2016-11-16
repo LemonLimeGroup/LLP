@@ -96,7 +96,7 @@ public class LLP_Socket {
 
         setDestAddress(address);
         setDestPort(port);
-//        socket.connect(); // TODO: probably should be used somewhere
+        socket.connect(address, port); // TODO: probably should be used somewhere
         System.out.println("CONNECTION ESTABLISHED");
         // Connection established completed for client-side
     }
@@ -163,14 +163,14 @@ public class LLP_Socket {
         return send_buffer.length == sendSize + 1;
     }
 
-    public byte[] receive(int readSize) {
+    public byte[] receive(int maxSize) {
         // checksum (corrupt?)
         // timeout (lost?)
         // out of order received pckt ignored
         // successful?
         // store the packet without the header
         // return received packets
-        byte[] rawReceiveData = new byte[1024];
+        byte[] rawReceiveData = new byte[maxSize];
         DatagramPacket receivePacket = new DatagramPacket(rawReceiveData, rawReceiveData.length);
         try {
             socket.receive(receivePacket);

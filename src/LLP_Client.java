@@ -20,6 +20,7 @@ public class LLP_Client {
     public LLP_Client(InetAddress ipAddress, int port) {
         this.ipAddress = ipAddress;
         this.port = port;
+        // TODO: add bind
     }
 
     public void connect() {
