@@ -87,6 +87,13 @@ public class LLP_Packet {
 
         return packet;
     }
+    //TODO? I'm going to create getters for the ones I need... but if you see better way, do change it :)
+    public int getACKFlag() {
+        return ACK;
+    }
+    public int getFINFlag() {
+        return FIN;
+    }
 
     public void setACKFlag(boolean enabled) {
         this.ACK = enabled ? 1 : 0;

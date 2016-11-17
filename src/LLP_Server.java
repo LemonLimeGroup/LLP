@@ -10,25 +10,17 @@ import java.util.Scanner;
  * Created by Sally on 11/9/16.
  */
 public  class LLP_Server {
-    LLP_Socket socket;
-    private int port;
-
-    public LLP_Server(int port) {
-        this.port = port;
-    }
-
-    public void window(int num) {
+    public static void window(LLP_Socket socket, int num) {
         socket.setWindowSize(num);
     }
 
-    public void terminate() {
+    public static void terminate(LLP_Socket socket) {
         socket.close();
     }
 
-    public void start() {
-        socket = new LLP_Socket(port);
-        socket.accept();
-        byte[] bytes = socket.receive(1024);
+    public static void start(LLP_Socket conn) {
+
+        byte[] bytes = conn.receive(1024);
 //        System.out.println(bytes.length);
 //        for(int i = 0; i < bytes.length / 2; i++)
 //        {
@@ -42,21 +34,35 @@ public  class LLP_Server {
 
     public static void main(String[] args) {
         int port = Integer.parseInt(args[0]);
-        LLP_Server server = new LLP_Server(port);
-        server.start();
-
-        Scanner sc = new Scanner(System.in);
-        String input = sc.next().toLowerCase();
-        switch (input) {
-            case "window":
-                server.window(Integer.parseInt(sc.next()));
-                break;
-            case "terminate":
-                server.terminate();
-                break;
-            default:
-                System.out.println("Command not recognized.");
+        LLP_Socket serverSocket = new LLP_Socket(port);
+        while (true) {
+            LLP_Socket c = serverSocket.accept();
+            //TODO: Multithreading
+            Thread thread = new Thread() {
+                public void run() {
+                    while (true) {
+                        byte[] bytes = c.receive(1024);
+                        String data = new String(bytes);
+                        System.out.println(data);
+                    }
+                }
+            };
+            System.out.println("New thread");
+            thread.start();
         }
+
+//        Scanner sc = new Scanner(System.in);
+//        String input = sc.next().toLowerCase();
+//        switch (input) {
+//            case "window":
+//                window(serverSocket, Integer.parseInt(sc.next()));
+//                break;
+//            case "terminate":
+//                terminate(serverSocket);
+//                break;
+//            default:
+//                System.out.println("Command not recognized.");
+//        }
 
 
     }
