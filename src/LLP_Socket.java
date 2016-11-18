@@ -1,5 +1,8 @@
+import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.net.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Created by Sally on 11/12/16.
@@ -75,21 +78,14 @@ public class LLP_Socket {
         byte[] synData = synPacketLLP.toArray();
 
         DatagramPacket synPacket = new DatagramPacket(synData, synData.length, address, port);
-        try {
-            socket.send(synPacket);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        ensureSend(synPacket);
 
         // Receive SYN-ACK & initialize remote Seq Num
         System.out.println("WAITING FOR SYN-ACK FROM SERVER");
         byte[] receiveData = new byte[MAX_DATA_SIZE]; // based on max data size
         DatagramPacket recvSynAckPacket = new DatagramPacket(receiveData, receiveData.length);
-        try {
-            socket.receive(recvSynAckPacket); // TODO: Check sequence number etc. ; window allocation done around here
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        ensureRcv(recvSynAckPacket); // TODO: Check sequence number etc. ; window allocation done around here
+
         byte[] synAckArray = recvSynAckPacket.getData();
         //TODO: get remote sequence numbere
         // Send ACK
@@ -98,11 +94,7 @@ public class LLP_Socket {
         ackPacketLLP.setACKFlag(true);
         byte[] ackData = ackPacketLLP.toArray();
         DatagramPacket ackPacket = new DatagramPacket(ackData, ackData.length, address, port);
-        try {
-            socket.send(ackPacket);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        ensureSend(ackPacket);
         // TODO: update seq numbers
 
         setDestAddress(address);
@@ -119,22 +111,12 @@ public class LLP_Socket {
      * @return socket
      */
     public LLP_Socket accept() {
-        boolean isSuccessful = false;
         byte[] receiveData = new byte[MAX_DATA_SIZE];
         DatagramPacket receiveSYN = new DatagramPacket(receiveData, receiveData.length);
         // Receive SYN
         System.out.println("WAITING FOR SYN FROM CLIENT");
         // TODO: Check that packet has SYN, otherwise need to switch states / wait;
-        while (!isSuccessful) {
-            try {
-                //TODO: timeout?
-                socket.receive(receiveSYN);
-                isSuccessful = true;
-            } catch (IOException e) {
-                System.out.println("Did not receive packet. Trying again");
-            } // TODO: Initialize remote sequence number
-
-        }
+        ensureRcv(receiveSYN);
 
         System.out.println("SEND A SYN-ACK TO CLIENT");
         // Send SYN-ACK
@@ -144,37 +126,13 @@ public class LLP_Socket {
         byte[] sendSYNACKData = synAckPacketLLP.toArray();
         DatagramPacket sendPacket = new DatagramPacket(sendSYNACKData, sendSYNACKData.length,
                 receiveSYN.getAddress(), receiveSYN.getPort());
-        isSuccessful = false;
-        while(!isSuccessful) {
-            try {
-                socket.send(sendPacket);
-                isSuccessful = true;
-            } catch (IOException e) {
-                System.out.println("Sending packet wasn't successful. Trying again.");
-            }
-
-        }
+        ensureSend(sendPacket);
 
         // Receive ACK
-        byte[] receiveAckData = new byte[1024];
-        DatagramPacket receiveACK = new DatagramPacket(receiveAckData, receiveAckData.length);
-        isSuccessful = false;
-        while (!isSuccessful) {
-            try {
-                socket.receive(receiveACK);
-                isSuccessful = true;
-            } catch (IOException e) {
-                System.out.println("Receiving ACK failed. Trying again");
-            }
-        }
+        receiveData = new byte[MAX_DATA_SIZE];
+        DatagramPacket receiveACK = new DatagramPacket(receiveData, receiveData.length);
+        ensureRcv(receiveACK);
         System.out.println("CONNECTION ACCEPTED");
-        System.out.println(socket.isBound());
-        System.out.println(receiveACK.getSocketAddress());
-        try {
-            System.out.println("reuseAddress():" + socket.getReuseAddress());
-        } catch (Exception e) {
-
-        }
         LLP_Socket retSocket = new LLP_Socket(socket.getLocalPort());
         // TODO: parse ACK and Seq Number
         return retSocket; // TODO: Not sure what to return -- tcp normally returns connection socket
@@ -192,6 +150,8 @@ public class LLP_Socket {
     }
 
     public void close() {
+        byte[] receiveData = new byte[MAX_DATA_SIZE];
+        DatagramPacket recvPacket = new DatagramPacket(receiveData, receiveData.length);
         // Send FIN
         System.out.println("SENDING FIN");
         LLP_Packet finPacketLLP = new LLP_Packet(localSeq, remoteSeq+1, 0, windowSize);
@@ -199,30 +159,11 @@ public class LLP_Socket {
         byte[] finArray = finPacketLLP.toArray();
 
         DatagramPacket finPacket = new DatagramPacket(finArray, finArray.length, socket.getRemoteSocketAddress());
-        boolean isSuccessful = false;
-        while (!isSuccessful) {
-            try {
-                socket.send(finPacket);
-                isSuccessful = true;
-            } catch (IOException e) {
-                System.out.println("Failed to send FIN. Retrying...");
-            }
-        }
+        ensureSend(finPacket);
 
         // Receive either FIN or ACK
         System.out.println("FIN-WAIT-1 STATE. WAITING FOR FIN OR ACK.");
-        byte[] receiveData = new byte[MAX_DATA_SIZE]; // based on max data size
-        DatagramPacket recvPacket = new DatagramPacket(receiveData, receiveData.length);
-
-        isSuccessful = false;
-        while (!isSuccessful) {
-            try {
-                socket.receive(recvPacket);
-                isSuccessful = true;
-            } catch (IOException e) {
-                System.out.println("Failed to receive packet. Retrying...");
-            }
-        }
+        ensureRcv(recvPacket);
 
         byte[] trimmedRcvData = new byte[recvPacket.getLength()]; // I think getLength() returns actual packet size received
         System.arraycopy(receiveData, 0, trimmedRcvData, 0, trimmedRcvData.length);
@@ -232,61 +173,29 @@ public class LLP_Socket {
             //TODO FIN-WAIT-2
             System.out.println("ACK received. Waiting for FIN.");
             receiveData = new byte[MAX_DATA_SIZE];
-            DatagramPacket recvFIN = new DatagramPacket(receiveData, receiveData.length);
+            recvPacket = new DatagramPacket(receiveData, receiveData.length);
+            ensureRcv(recvPacket);
 
-            isSuccessful = false;
-            while (!isSuccessful) {
-                try {
-                    socket.receive(recvFIN);
-                    isSuccessful = true;
-                } catch (IOException e) {
-                    System.out.println("Failed to receive FIN. Retrying...");
-                }
-            }
             //TODO? Check if FIN
             System.out.println("Received FIN. Sending ACK.");
             LLP_Packet ackPacketLLP = new LLP_Packet(localSeq, remoteSeq+1, 0, windowSize);
             ackPacketLLP.setACKFlag(true);
             byte[] ackArray = ackPacketLLP.toArray();
             DatagramPacket ackPacket = new DatagramPacket(ackArray, finArray.length, socket.getRemoteSocketAddress());
-            isSuccessful = false;
-            while (!isSuccessful) {
-                try {
-                    socket.send(ackPacket);
-                    isSuccessful = true;
-                } catch (IOException e) {
-                    System.out.println("Failed to send ACK. Retrying...");
-                }
-            }
+            ensureSend(ackPacket);
         } else if (recvPacktLLP.getFINFlag() == 1) {
             System.out.println("FIN received. Sending ACK");
             LLP_Packet ackPacketLLP = new LLP_Packet(localSeq, remoteSeq+1, 0, windowSize);
             ackPacketLLP.setACKFlag(true);
             byte[] ackArray = ackPacketLLP.toArray();
             DatagramPacket ackPacket = new DatagramPacket(ackArray, finArray.length, socket.getRemoteSocketAddress());
-            isSuccessful = false;
-            while (!isSuccessful) {
-                try {
-                    socket.send(ackPacket);
-                    isSuccessful = true;
-                } catch (IOException e) {
-                    System.out.println("Failed to send ACK. Retrying...");
-                }
-            }
+            ensureSend(ackPacket);
 
             System.out.println("Closing State. Waiting for ACK");
             receiveData = new byte[MAX_DATA_SIZE]; // based on max data size
-            DatagramPacket recvACK = new DatagramPacket(receiveData, receiveData.length);
+            recvPacket = new DatagramPacket(receiveData, receiveData.length);
 
-            isSuccessful = false;
-            while (!isSuccessful) {
-                try {
-                    socket.receive(recvACK);
-                    isSuccessful = true;
-                } catch (IOException e) {
-                    System.out.println("Failed to receive ACK. Retrying...");
-                }
-            }
+            ensureRcv(recvPacket);
 
             //TODO? Check if it is ACK
         }
@@ -308,11 +217,7 @@ public class LLP_Socket {
         // return received packets
         byte[] rawReceiveData = new byte[maxSize];
         DatagramPacket receivePacket = new DatagramPacket(rawReceiveData, rawReceiveData.length);
-        try {
-            socket.receive(receivePacket);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        ensureRcv(receivePacket);
 
         // create new byte array without the empty unused buffer
         byte[] receiveData = new byte[receivePacket.getLength()];
@@ -331,11 +236,7 @@ public class LLP_Socket {
         System.out.println(destAddress);
         System.out.println(socket.getRemoteSocketAddress());
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
-        try {
-            socket.send(sendPacket);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        ensureSend(sendPacket);
         System.out.println("SENT DATA");
     }
 
@@ -357,6 +258,30 @@ public class LLP_Socket {
 
     public void setDestPort(int port) {
         this.destPort = port;
+    }
+
+    //HELPER METHODS
+    private void ensureSend(DatagramPacket sendPckt) {
+        boolean isSuccessful = false;
+        while (!isSuccessful) {
+            try {
+                socket.send(sendPckt);
+                isSuccessful = true;
+            } catch (IOException e) {
+                System.out.println("Failed to send. Retrying...");
+            }
+        }
+    }
+    private void ensureRcv(DatagramPacket recvPckt) {
+        boolean isSuccessful = false;
+        while (!isSuccessful) {
+            try {
+                socket.receive(recvPckt);
+                isSuccessful = true;
+            } catch (IOException e) {
+                System.out.println("Failed to receive. Retrying...");
+            }
+        }
     }
 }
 
