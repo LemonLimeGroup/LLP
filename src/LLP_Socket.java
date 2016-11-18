@@ -29,19 +29,28 @@ public class LLP_Socket {
     }
 
     public LLP_Socket(int localPort, InetAddress address) {
+        boolean isSuccessful = false;
         try {
-            if (localPort == -1) {
-                socket = new DatagramSocket();
-            } else if (address == null) {
-                socket = new DatagramSocket(localPort);
-            } else {
-                socket = new DatagramSocket(localPort, address);
+            socket = new DatagramSocket(null);
+            while (!isSuccessful) {
+                try {
+                    socket.setReuseAddress(true);
+                    isSuccessful = true;
+                } catch (SocketException e) {
+                    System.out.println("Failed to make address reusable. Retrying...");
+                }
+            }
+            if (localPort != -1 && address == null) {
+                socket.bind(new InetSocketAddress(localPort));
+            } else if (localPort != -1 && address != null){
+                socket.bind(new InetSocketAddress(address, localPort));
             }
         } catch (SocketException e) {
             e.printStackTrace();
             System.out.println("Failed to create a socket");
             return;
         }
+
         send_buffer = new byte[MAX_WINDOW_SIZE];
         receive_buffer = new byte[MAX_WINDOW_SIZE];
         sendSize = 0;
@@ -110,12 +119,12 @@ public class LLP_Socket {
      * @return socket
      */
     public LLP_Socket accept() {
+        boolean isSuccessful = false;
+        byte[] receiveData = new byte[MAX_DATA_SIZE];
+        DatagramPacket receiveSYN = new DatagramPacket(receiveData, receiveData.length);
         // Receive SYN
         System.out.println("WAITING FOR SYN FROM CLIENT");
-        byte[] receiveData = new byte[MAX_DATA_SIZE];
-        // TODO: Check that packet has SYN, otherwise need to switch states / wait
-        DatagramPacket receiveSYN = new DatagramPacket(receiveData, receiveData.length);
-        boolean isSuccessful = false;
+        // TODO: Check that packet has SYN, otherwise need to switch states / wait;
         while (!isSuccessful) {
             try {
                 //TODO: timeout?
@@ -159,10 +168,14 @@ public class LLP_Socket {
             }
         }
         System.out.println("CONNECTION ACCEPTED");
-        System.out.println(socket.getLocalSocketAddress());
+        System.out.println(socket.isBound());
         System.out.println(receiveACK.getSocketAddress());
-        System.out.println("getAddress():" + receiveACK.getAddress());
-        LLP_Socket retSocket = new LLP_Socket();
+        try {
+            System.out.println("reuseAddress():" + socket.getReuseAddress());
+        } catch (Exception e) {
+
+        }
+        LLP_Socket retSocket = new LLP_Socket(socket.getLocalPort());
         // TODO: parse ACK and Seq Number
         return retSocket; // TODO: Not sure what to return -- tcp normally returns connection socket
     }

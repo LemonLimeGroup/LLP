@@ -41,6 +41,7 @@ public  class LLP_Server {
             Thread thread = new Thread() {
                 public void run() {
                     while (true) {
+                        System.out.println("In thread yay!");
                         byte[] bytes = c.receive(1024);
                         String data = new String(bytes);
                         System.out.println(data);
