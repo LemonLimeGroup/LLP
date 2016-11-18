@@ -36,13 +36,13 @@ public  class LLP_Server {
         int port = Integer.parseInt(args[0]);
         LLP_Socket serverSocket = new LLP_Socket(port);
         while (true) {
-            LLP_Socket c = serverSocket.accept();
+            LLP_Socket conn = serverSocket.accept();
             //TODO: Multithreading
             Thread thread = new Thread() {
                 public void run() {
                     while (true) {
                         System.out.println("In thread yay!");
-                        byte[] bytes = c.receive(1024);
+                        byte[] bytes = conn.receive(1024);
                         String data = new String(bytes);
                         System.out.println(data);
                     }

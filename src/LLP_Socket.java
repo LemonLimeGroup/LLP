@@ -224,6 +224,7 @@ public class LLP_Socket {
     }
 
     public byte[] receive(int maxSize) {
+        // window!!
         // checksum (corrupt?)
         // timeout (lost?)
         // out of order received pckt ignored
