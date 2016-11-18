@@ -30,8 +30,11 @@ public class LLP_Socket {
     public LLP_Socket(int localPort) throws IllegalArgumentException {
        this(localPort, null);
     }
-
     public LLP_Socket(int localPort, InetAddress address) {
+        this(localPort, address, null);
+    }
+
+    public LLP_Socket(int localPort, InetAddress localAddress, SocketAddress remoteAddress) {
         boolean isSuccessful = false;
         try {
             socket = new DatagramSocket(null);
@@ -43,15 +46,27 @@ public class LLP_Socket {
                     System.out.println("Failed to make address reusable. Retrying...");
                 }
             }
-            if (localPort != -1 && address == null) {
+            if (localPort != -1 && localAddress == null) {
                 socket.bind(new InetSocketAddress(localPort));
-            } else if (localPort != -1 && address != null){
-                socket.bind(new InetSocketAddress(address, localPort));
+            } else if (localPort != -1 && localAddress != null){
+                socket.bind(new InetSocketAddress(localAddress, localPort));
             }
         } catch (SocketException e) {
             e.printStackTrace();
             System.out.println("Failed to create a socket");
             return;
+        }
+        if (remoteAddress != null) {
+            isSuccessful = false;
+            while (!isSuccessful) {
+                try {
+                    socket.connect(remoteAddress);
+                    isSuccessful = true;
+                } catch (SocketException e) {
+                    System.out.println("Failed to connect. Retrying...");
+
+                }
+            }
         }
 
         send_buffer = new byte[MAX_WINDOW_SIZE];
@@ -133,7 +148,7 @@ public class LLP_Socket {
         DatagramPacket receiveACK = new DatagramPacket(receiveData, receiveData.length);
         ensureRcv(receiveACK);
         System.out.println("CONNECTION ACCEPTED");
-        LLP_Socket retSocket = new LLP_Socket(socket.getLocalPort());
+        LLP_Socket retSocket = new LLP_Socket(socket.getLocalPort(), socket.getLocalAddress(), sendPacket.getSocketAddress());
         // TODO: parse ACK and Seq Number
         return retSocket; // TODO: Not sure what to return -- tcp normally returns connection socket
     }
