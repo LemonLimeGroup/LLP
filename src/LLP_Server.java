@@ -1,7 +1,4 @@
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -21,13 +18,7 @@ public  class LLP_Server {
     public static void start(LLP_Socket conn) {
 
         byte[] bytes = conn.receive(1024);
-//        System.out.println(bytes.length);
-//        for(int i = 0; i < bytes.length / 2; i++)
-//        {
-//            byte temp = bytes[i];
-//            bytes[i] = bytes[bytes.length - i - 1];
-//            bytes[bytes.length - i - 1] = temp;
-//        }
+
         String data = new String(bytes);
         System.out.println(data);
     }
@@ -39,12 +30,32 @@ public  class LLP_Server {
             LLP_Socket conn = serverSocket.accept();
             //TODO: Multithreading
             Thread thread = new Thread() {
+                FileInputStream fis = null;
+                BufferedInputStream bis = null;
                 public void run() {
                     while (true) {
                         System.out.println("In thread yay!");
                         byte[] bytes = conn.receive(1024);
-                        String data = new String(bytes);
-                        System.out.println(data);
+                        String filename = new String(bytes);
+                        System.out.println(filename);
+
+                        File file = new File(filename);
+                        byte[] mybytearray = new byte[(int)file.length()];
+                        try {
+                            fis = new FileInputStream(file);
+                        } catch (FileNotFoundException e) {
+                            e.printStackTrace();
+                        }
+
+                        bis = new BufferedInputStream(fis);
+                        try {
+                            bis.read(mybytearray, 0, mybytearray.length);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+
+                        conn.send(mybytearray);
                     }
                 }
             };

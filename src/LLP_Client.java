@@ -30,7 +30,13 @@ public class LLP_Client {
 
     public void get(String fileloc){
         socket.send(fileloc.getBytes());
-//        byte[] buff = new byte[1024];
+
+
+        // Receive file
+        while (true) {
+            byte[] buff = socket.receive(1024);
+            System.out.println(new String(buff));
+        }
 //        ByteArrayInputStream in = new ByteArrayInputStream(buff); // should be from socket buffer I think
 //        int data;
 //        try {
