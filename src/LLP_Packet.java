@@ -47,7 +47,7 @@ public class LLP_Packet {
 
         String bitString = "";
         bitString += String.format("%2s", Integer.toBinaryString(dataOffset)).replace(' ', '0');
-        bitString += String.format("%16s", Integer.toBinaryString(checksum)).replace(' ', '0');
+        bitString += createChecksum();
         bitString += Integer.toBinaryString(ACK);
         bitString += Integer.toBinaryString(RST);
         bitString += Integer.toBinaryString(SYN);
@@ -59,6 +59,58 @@ public class LLP_Packet {
 
         byte[] newHeader = buff.array();
         return newHeader;
+    }
+
+    /**
+     * Computes the checksum for this LLP_Packet and updates the global var for checksum.
+     * Also returns the checksum in string representation.
+     *
+     * Helper function for createHeader()
+     *
+     * @return String containing the 16-bit checksum for this packet
+     */
+    public String createChecksum() {
+        // Lots of computations already done in createHeader() are repeated here; could potentially optimize
+
+        // Combine the header into one 80-bit string to segment later
+        String bitString = "";
+        bitString += String.format("%32s", Integer.toBinaryString(sequenceNum)).replace(' ', '0');
+        bitString += String.format("%32s", Integer.toBinaryString(ackNum)).replace(' ', '0');
+        bitString += String.format("%2s", Integer.toBinaryString(dataOffset)).replace(' ', '0');
+        bitString += Integer.toBinaryString(ACK);
+        bitString += Integer.toBinaryString(RST);
+        bitString += Integer.toBinaryString(SYN);
+        bitString += Integer.toBinaryString(FIN);
+        bitString += String.format("%10s", Integer.toBinaryString(windowSize)).replace(' ', '0');
+
+        if (bitString.length() != 80) {
+            System.out.println("WARNING: BITSTRING NOT EXPECTED LENGTH. Found: " + bitString.length() + " Expected: " + 80);
+        }
+
+        // Add the 16-bit chunks together
+        int checksum = 0;
+        for (int i = 0; i <= bitString.length() - 16; i += 16) {
+            checksum += Integer.parseInt(bitString.substring(i, i + 16), 2);
+        }
+
+        String checksumString = Integer.toBinaryString(checksum).replace(' ', '0');
+
+        // Take care of the carry(s)
+        while (checksumString.length() > 16) {
+            int carry = Integer.parseInt(checksumString.substring(12, checksumString.length()), 2);
+            int rest = Integer. parseInt(checksumString.substring(0, 12), 2);
+            checksum = carry + rest;
+            checksumString = Integer.toBinaryString(checksum);
+        }
+
+        // One's Complement Computations
+        int result = Integer.parseInt(checksumString, 2);
+        int flipped = ~result;
+        checksumString = Integer.toBinaryString(flipped); // 32-bits
+        checksumString = checksumString.substring(checksumString.length() - 16, checksumString.length()); // Truncate to 16-bits
+
+        this.checksum = Integer.parseInt(checksumString, 2);
+        return checksumString;
     }
 
     public byte[] getHeader() {
