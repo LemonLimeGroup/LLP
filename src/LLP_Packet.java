@@ -146,6 +146,15 @@ public class LLP_Packet {
     public int getFINFlag() {
         return FIN;
     }
+    public int getSequenceNum() {
+        return sequenceNum;
+    }
+    public int getAckNum() {
+        return ackNum;
+    }
+    public int getSYNFlag() {
+        return SYN;
+    }
 
     public void setACKFlag(boolean enabled) {
         this.ACK = enabled ? 1 : 0;

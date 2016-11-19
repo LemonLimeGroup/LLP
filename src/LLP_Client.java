@@ -11,20 +11,24 @@ public class LLP_Client {
     private InetAddress ipAddress;
     private int port;
     boolean isConnected; //??
+    boolean debug;
 
     public LLP_Client(){
-        this.ipAddress = null;
-        this.port = 0;
+        this(null, 0);
     }
 
     public LLP_Client(InetAddress ipAddress, int port) {
         this.ipAddress = ipAddress;
         this.port = port;
+        debug = false;
         // TODO: add bind
+    }
+    public void setDebug() {
+        debug = true;
     }
 
     public void connect() {
-        socket = new LLP_Socket();
+        socket = new LLP_Socket(debug);
         socket.connect(ipAddress, port);
     }
 
@@ -33,10 +37,10 @@ public class LLP_Client {
 
 
         // Receive file
-        while (true) {
-            byte[] buff = socket.receive(1024);
-            System.out.println(new String(buff));
-        }
+//        while (!done) {
+        byte[] buff = socket.receive(1024);
+        System.out.println(new String(buff));
+//        }
 //        ByteArrayInputStream in = new ByteArrayInputStream(buff); // should be from socket buffer I think
 //        int data;
 //        try {
@@ -57,7 +61,10 @@ public class LLP_Client {
     }
 
     public static void main(String[] args) {
-
+        if (args.length > 3) {
+            System.out.println("Invalide arguments");
+            System.exit(-1);
+        }
         //parse command line args
         LLP_Client client = new LLP_Client();
 
@@ -66,6 +73,9 @@ public class LLP_Client {
         } catch (UnknownHostException e){
             System.err.println("Caught UnknownHostException " + e.getMessage());
             System.exit(-1);
+        }
+        if (args.length > 2 && args[2].equals("-d")) {
+            client.setDebug();
         }
 
         boolean exit = false;
