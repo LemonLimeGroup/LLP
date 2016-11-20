@@ -97,8 +97,8 @@ public class LLP_Packet {
 
         // Take care of the carry(s)
         while (checksumString.length() > 16) {
-            int carry = Integer.parseInt(checksumString.substring(12, checksumString.length()), 2);
-            int rest = Integer. parseInt(checksumString.substring(0, 12), 2);
+            int carry = Integer.parseInt(checksumString.substring(0, checksumString.length() - 16), 2);
+            int rest = Integer. parseInt(checksumString.substring(checksumString.length() - 16, checksumString.length()), 2);
             checksum = carry + rest;
             checksumString = Integer.toBinaryString(checksum);
         }
@@ -227,7 +227,7 @@ public class LLP_Packet {
 
     //DELETE
     public static void main(String[] args) {
-        LLP_Packet test = new LLP_Packet(456,40,50,50);
+        LLP_Packet test = new LLP_Packet(456,400,500,500);
         byte[] bytes = test.getHeader();
         LLP_Packet testParsedPacket = LLP_Packet.parsePacket(bytes);
         System.out.println("Hello World!"); // Display the string.
