@@ -47,12 +47,10 @@ public  class LLP_Server {
                 FileInputStream fis = null;
                 BufferedInputStream bis = null;
                 public void run() {
-                    boolean isClosed = false;
-                    while (!isClosed) {
+                    while (true) {
                         System.out.println("In thread yay!");
                         byte[] bytes = conn.receive(1024);
                         if (bytes == null) {
-                            isClosed = true;
                             return;
                         }
                         String filename = new String(bytes);
