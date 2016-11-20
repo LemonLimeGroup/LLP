@@ -1,6 +1,10 @@
 import javax.xml.crypto.Data;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.net.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -9,14 +13,13 @@ import java.util.function.Function;
  */
 public class LLP_Socket {
     private static final int MAX_WINDOW_SIZE = 20480;
-    private static final int MAX_DATA_SIZE = 1024;
+    private static final int MAX_DATA_SIZE = 1012;
     private byte[] send_buffer;
     private byte[] receive_buffer;
     private int sendSize;
     private int receiveSize;
     private int windowSize;
     private DatagramSocket socket;
-    private DatagramSocket connectionSocket; // TODO: Might be necessary for accept() to work properly
     private int localSeq;
     private int remoteSeq;
     private InetAddress destAddress;
@@ -103,7 +106,7 @@ public class LLP_Socket {
         ensureRcv(recvSynAckPacket); // TODO: Check sequence number etc. ; window allocation done around here
 
         byte[] synAckArray = recvSynAckPacket.getData();
-        //TODO: get remote sequence numbere
+        //TODO: get remote sequence number
         // Send ACK
         System.out.println("SENDING ACK TO SERVER");
         LLP_Packet ackPacketLLP = new LLP_Packet(1, 1, 0, windowSize); // TODO: compute these values instead of hardcoded
@@ -256,15 +259,46 @@ public class LLP_Socket {
     }
 
     public void send(byte[] data) {
-        // LLP header
-        LLP_Packet sendPacketLLP = new LLP_Packet(localSeq, ++remoteSeq, 0, windowSize); // TODO: compute window size & seq numbers
-        sendPacketLLP.setData(data);
-        byte[] sendData = sendPacketLLP.toArray();
-        System.out.println(destAddress);
-        System.out.println(socket.getRemoteSocketAddress());
-        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
-        ensureSend(sendPacket);
-        System.out.println("SENT DATA");
+        // Data to be sent
+        byte[] fileBuff = data;
+
+        // Seq num of last ACKed packet
+        int waitingForAck = 0;
+
+        // Sequence number of the last packet
+        int lastSeqNum = (int) Math.ceil((double) fileBuff.length / MAX_DATA_SIZE);
+
+        // Seq Num of Last Sent Packet
+        this.localSeq = 0;
+
+        // Map to store unAcknowledged packets
+        Map<Integer, DatagramPacket> sentPackets = new HashMap<>();
+
+        // While window not full and there is more data to send:
+        while (this.localSeq - waitingForAck < MAX_WINDOW_SIZE && this.localSeq < lastSeqNum) {
+
+            // Store packet data to send
+            byte[] sendPacketBytes = null;
+            if (this.localSeq * MAX_DATA_SIZE + MAX_DATA_SIZE > fileBuff.length) {
+                sendPacketBytes = Arrays.copyOfRange(fileBuff, this.localSeq*MAX_DATA_SIZE, fileBuff.length); // ensure last packet has no nulls
+            } else {
+                sendPacketBytes = Arrays.copyOfRange(fileBuff, this.localSeq*MAX_DATA_SIZE, this.localSeq*MAX_DATA_SIZE + MAX_DATA_SIZE);
+            }
+
+            LLP_Packet sendPacketLLP = new LLP_Packet(this.localSeq++, ++remoteSeq, 0, windowSize);
+            sendPacketLLP.setData(sendPacketBytes);
+            byte[] sendData = sendPacketLLP.toArray();
+            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
+            ensureSend(sendPacket);
+            // Add packet to sent map
+            sentPackets.put(this.localSeq, sendPacket);
+
+            System.out.println("SENT DATA " + this.localSeq);
+
+            // TODO: Accept ACKs for sent packets
+
+            // TODO: Have timer
+        }
     }
 
     public byte[] getInputStream() {

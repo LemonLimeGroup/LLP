@@ -4,13 +4,12 @@ import java.net.UnknownHostException;
 import java.util.Scanner;
 
 /**
- * Created by Sally on 11/12/16.
+ * Created by Sally, Yami on 11/12/16.
  */
 public class LLP_Client {
     LLP_Socket socket;
     private InetAddress ipAddress;
     private int port;
-    boolean isConnected; //??
     boolean debug;
 
     public LLP_Client(){
@@ -43,23 +42,28 @@ public class LLP_Client {
             e.printStackTrace();
         }
         boolean eof = false;
-        int curr = 0;
 
         while (!eof) {
             byte[] buff = socket.receive(1024);
             try {
                 if(buff[buff.length-1] == 4){
                     eof = true;
-                    out.write(buff, curr, buff.length-1);
+                    out.write(buff, 0, buff.length-1);
                 }else{
-                    out.write(buff, curr, buff.length);
+                    out.write(buff, 0, buff.length);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
-            curr += buff.length;
         }
+        System.out.println("FILE DOWNLOAD COMPLETE");
+        try {
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 
     public void post(String fileloc){
@@ -72,7 +76,7 @@ public class LLP_Client {
 
     public static void main(String[] args) {
         if (args.length > 3) {
-            System.out.println("Invalide arguments");
+            System.out.println("Invalid arguments");
             System.exit(-1);
         }
         //parse command line args
