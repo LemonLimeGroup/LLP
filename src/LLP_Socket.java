@@ -286,6 +286,9 @@ public class LLP_Socket {
     public void setDestPort(int port) {
         this.destPort = port;
     }
+    public void closeServer() {
+        socket.close();
+    }
 
     //HELPER METHODS
     private void ensureSend(DatagramPacket sendPckt) {
