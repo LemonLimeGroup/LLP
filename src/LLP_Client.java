@@ -34,22 +34,32 @@ public class LLP_Client {
 
     public void get(String fileloc){
         socket.send(fileloc.getBytes());
-
+        FileOutputStream out = null;
 
         // Receive file
-//        while (!done) {
-        byte[] buff = socket.receive(1024);
-        System.out.println(new String(buff));
-//        }
-//        ByteArrayInputStream in = new ByteArrayInputStream(buff); // should be from socket buffer I think
-//        int data;
-//        try {
-//            while((data = in.read(buff)) > 0){
-//                socket.send(buff); //wat
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+        try {
+            out = new FileOutputStream("downloaded_" + fileloc);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        boolean eof = false;
+        int curr = 0;
+
+        while (!eof) {
+            byte[] buff = socket.receive(1024);
+            try {
+                if(buff[buff.length-1] == 4){
+                    eof = true;
+                    out.write(buff, curr, buff.length-1);
+                }else{
+                    out.write(buff, curr, buff.length);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            curr += buff.length;
+        }
     }
 
     public void post(String fileloc){

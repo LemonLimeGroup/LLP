@@ -42,8 +42,12 @@ public class LLP_Packet {
 
     public byte[] createHeader() {
         ByteBuffer buff = ByteBuffer.allocate(12);
-        buff.putInt(sequenceNum);
-        buff.putInt(ackNum);
+
+        String seqString = String.format("%32s", Integer.toBinaryString(sequenceNum)).replace(' ', '0');
+        String ackString = String.format("%32s", Integer.toBinaryString(ackNum)).replace(' ', '0');
+
+        buff.putInt(Integer.parseInt(seqString, 2));
+        buff.putInt(Integer.parseInt(ackString, 2));
 
         String bitString = "";
         bitString += String.format("%2s", Integer.toBinaryString(dataOffset)).replace(' ', '0');
@@ -113,6 +117,66 @@ public class LLP_Packet {
         return checksumString;
     }
 
+    /**
+     * Computes the checksum for this LLP_Packet and updates the global var for checksum.
+     * Also returns the checksum in string representation.
+     *
+     * Helper function for createHeader()
+     *
+     * @return String containing the 16-bit checksum for this packet
+     */
+    public boolean isValidChecksum() {
+        // Lots of computations already done in createHeader() are repeated here; could potentially optimize
+
+        // Combine the header into one 80-bit string to segment later
+        String bitString = "";
+        bitString += String.format("%32s", Integer.toBinaryString(sequenceNum)).replace(' ', '0');
+        bitString += String.format("%32s", Integer.toBinaryString(ackNum)).replace(' ', '0');
+        bitString += String.format("%2s", Integer.toBinaryString(dataOffset)).replace(' ', '0');
+        bitString += Integer.toBinaryString(ACK);
+        bitString += Integer.toBinaryString(RST);
+        bitString += Integer.toBinaryString(SYN);
+        bitString += Integer.toBinaryString(FIN);
+        bitString += String.format("%10s", Integer.toBinaryString(windowSize)).replace(' ', '0');
+        // Include the checksum
+        bitString += String.format("%16s", Integer.toBinaryString(checksum)).replace(' ', '0');
+
+
+        if (bitString.length() != 96) {
+            System.out.println("WARNING: BITSTRING NOT EXPECTED LENGTH. Found: " + bitString.length() + " Expected: " + 96);
+        }
+
+        // Add the 16-bit chunks together
+        int checksum = 0;
+        for (int i = 0; i <= bitString.length() - 16; i += 16) {
+            checksum += Integer.parseInt(bitString.substring(i, i + 16), 2);
+        }
+
+        String checksumString = Integer.toBinaryString(checksum).replace(' ', '0');
+
+        // Take care of the carry(s)
+        while (checksumString.length() > 16) {
+            int carry = Integer.parseInt(checksumString.substring(0, checksumString.length() - 16), 2);
+            int rest = Integer. parseInt(checksumString.substring(checksumString.length() - 16, checksumString.length()), 2);
+            checksum = carry + rest;
+            checksumString = Integer.toBinaryString(checksum);
+        }
+
+        // One's Complement Computations
+        int additionResult = Integer.parseInt(checksumString, 2);
+
+        int flipped = ~additionResult;
+        String temp = Integer.toBinaryString(flipped);
+
+        int finalResult = Integer.parseInt(temp.substring(temp.length() - 16, temp.length()), 2);
+
+        if (finalResult == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public byte[] getHeader() {
         return createHeader();
     }
@@ -152,6 +216,10 @@ public class LLP_Packet {
     public int getAckNum() {
         return ackNum;
     }
+    public int getWindowSize() {
+        return windowSize;
+    }
+    
     public int getSYNFlag() {
         return SYN;
     }
@@ -227,9 +295,19 @@ public class LLP_Packet {
 
     //DELETE
     public static void main(String[] args) {
-        LLP_Packet test = new LLP_Packet(456,400,500,500);
+        LLP_Packet test = new LLP_Packet(2,13241,0,234);
         byte[] bytes = test.getHeader();
+        System.out.println("ORIGINAL PACKET: WINDOW " + test.getWindowSize()
+                + " ACK " + test.getAckNum()
+                + " SEQ " + test.getSequenceNum());
+
         LLP_Packet testParsedPacket = LLP_Packet.parsePacket(bytes);
+        System.out.println("RECEIVED PACKET: WINDOW " + testParsedPacket.getWindowSize()
+                + " ACK " + testParsedPacket.getAckNum()
+                + " SEQ " + testParsedPacket.getSequenceNum());
+
+
+        System.out.println("IS VALID CHECKSUM: " + test.isValidChecksum());
         System.out.println("Hello World!"); // Display the string.
     }
 }

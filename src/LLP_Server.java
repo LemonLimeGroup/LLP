@@ -1,3 +1,4 @@
+import javax.xml.soap.SOAPPart;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -58,7 +59,7 @@ public  class LLP_Server {
                         System.out.println(filename);
 
                         File file = new File(filename);
-                        byte[] mybytearray = new byte[(int)file.length()];
+                        byte[] mybytearray = new byte[(int)file.length()+1];
                         try {
                             fis = new FileInputStream(file);
                         } catch (FileNotFoundException e) {
@@ -71,8 +72,7 @@ public  class LLP_Server {
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
-
-
+                        mybytearray[mybytearray.length-1] = 4;
                         conn.send(mybytearray);
                     }
                 }
