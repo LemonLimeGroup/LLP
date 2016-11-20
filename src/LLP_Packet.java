@@ -61,8 +61,7 @@ public class LLP_Packet {
         int i = Integer.parseInt(bitString, 2);
         buff.putInt(i);
 
-        byte[] newHeader = buff.array();
-        return newHeader;
+        return buff.array();
     }
 
     /**
@@ -170,11 +169,7 @@ public class LLP_Packet {
 
         int finalResult = Integer.parseInt(temp.substring(temp.length() - 16, temp.length()), 2);
 
-        if (finalResult == 0) {
-            return true;
-        } else {
-            return false;
-        }
+        return finalResult == 0;
     }
 
     public byte[] getHeader() {
@@ -219,7 +214,7 @@ public class LLP_Packet {
     public int getWindowSize() {
         return windowSize;
     }
-    
+
     public int getSYNFlag() {
         return SYN;
     }
