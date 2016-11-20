@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.Scanner;
 
 /**
- * Created by Sally on 11/9/16.
+ * Created by Sally, Yami on 11/9/16.
  */
 public  class LLP_Server {
     public static void window(LLP_Socket socket, int num) {
@@ -54,7 +54,6 @@ public  class LLP_Server {
                             return;
                         }
                         String filename = new String(bytes);
-                        System.out.println(filename);
 
                         File file = new File(filename);
                         byte[] mybytearray = new byte[(int)file.length()+1];
