@@ -353,7 +353,6 @@ public class LLP_Socket {
      * */
     private void recvdClose() {
         byte[] receiveData = new byte[MAX_DATA_SIZE];
-        DatagramPacket recvPacket = new DatagramPacket(receiveData, receiveData.length);
         //Received FIN. Sending ACK
         printDebug("Received FIN. Trying to send ACK");
 
