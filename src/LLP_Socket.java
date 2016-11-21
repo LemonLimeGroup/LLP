@@ -352,7 +352,6 @@ public class LLP_Socket {
      * Called when either side receives FIN from the other end point
      * */
     private void recvdClose() {
-        byte[] receiveData = new byte[MAX_DATA_SIZE];
         //Received FIN. Sending ACK
         printDebug("Received FIN. Trying to send ACK");
 

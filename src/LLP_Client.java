@@ -45,6 +45,10 @@ public class LLP_Client {
 
         while (!eof) {
             byte[] buff = socket.receive(1024);
+            if (buff == null) {
+                printDebug("Server closed.");
+                System.exit(0);
+            }
             try {
                 if(buff[buff.length-1] == 4){
                     eof = true;
@@ -72,6 +76,11 @@ public class LLP_Client {
 
     public void disconnect() {
         socket.close();
+    }
+    private void printDebug(String statement) {
+        if (debug) {
+            System.out.println(statement);
+        }
     }
 
     public static void main(String[] args) {
