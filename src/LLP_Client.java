@@ -47,6 +47,13 @@ public class LLP_Client {
             byte[] buff = socket.receive(1024);
             if (buff == null) {
                 printDebug("Server closed.");
+                try {
+                    out.close();
+                    new File("downloaded_" + fileloc).delete();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
                 System.exit(0);
             }
             try {

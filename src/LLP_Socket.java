@@ -244,6 +244,7 @@ public class LLP_Socket {
         LLP_Packet receivedLLP = LLP_Packet.parsePacket(receiveData);
         if (receivedLLP.getFINFlag() == 1) {
             recvdClose(receivePacket);
+            //TODO: Return something else?
             return null;
         }
 
