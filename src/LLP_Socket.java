@@ -184,15 +184,11 @@ public class LLP_Socket {
         System.arraycopy(receiveData, 0, trimmedRcvData, 0, trimmedRcvData.length);
         LLP_Packet recvPacktLLP = LLP_Packet.parsePacket(trimmedRcvData);
 
+        System.out.println("finpacket address:" + finPacket.getSocketAddress());
         if (recvPacktLLP.getACKFlag() == 1) {
-            //TODO FIN-WAIT-2
+            //FIN-WAIT-2
             printDebug("ACK received. Waiting for FIN.");
-
-            receiveData = new byte[MAX_DATA_SIZE];
-            recvPacket = new DatagramPacket(receiveData, receiveData.length);
-            ensureRcv(recvPacket);
-
-            //TODO? Check if FIN
+            ensureRcvdFlag("FIN", finPacket);
             printDebug("Received FIN. Sending ACK.");
 
             LLP_Packet ackPacketLLP = new LLP_Packet(localSeq, remoteSeq+1, 0, windowSize);
@@ -210,12 +206,7 @@ public class LLP_Socket {
 
             printDebug("Closing State. Waiting for ACK");
 
-            receiveData = new byte[MAX_DATA_SIZE]; // based on max data size
-            recvPacket = new DatagramPacket(receiveData, receiveData.length);
-
-            ensureRcv(recvPacket);
-
-            //TODO? Check if it is ACK
+            ensureRcvdFlag("ACK", finPacket);
         }
         //TODO: Timed-Wait or no?
         System.out.println("Timed-Wait State.");
