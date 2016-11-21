@@ -1,3 +1,5 @@
+import org.omg.CORBA.TIMEOUT;
+
 import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -14,6 +16,7 @@ import java.util.function.Function;
 public class LLP_Socket {
     private static final int MAX_WINDOW_SIZE = 20480;
     private static final int MAX_DATA_SIZE = 1012;
+    private static final int TIMER = 5;
     private byte[] send_buffer;
     private byte[] receive_buffer;
     private int sendSize;
@@ -22,6 +25,7 @@ public class LLP_Socket {
     private DatagramSocket socket;
     private int localSeq;
     private int remoteSeq;
+    private int expectedSeqNum;
     private InetAddress destAddress;
     private int destPort;
     boolean debug;
@@ -234,13 +238,8 @@ public class LLP_Socket {
     }
 
     public byte[] receive(int maxSize) {
-        // window!!
-        // checksum (corrupt?)
-        // timeout (lost?)
-        // out of order received pckt ignored
-        // successful?
-        // store the packet without the header
-        // return received packets
+        // TODO: discuss whether the client should be able to specify a receive size
+
         byte[] rawReceiveData = new byte[maxSize];
         DatagramPacket receivePacket = new DatagramPacket(rawReceiveData, rawReceiveData.length);
         ensureRcv(receivePacket);
@@ -249,13 +248,48 @@ public class LLP_Socket {
         byte[] receiveData = new byte[receivePacket.getLength()];
         System.arraycopy(rawReceiveData, 0, receiveData, 0, receiveData.length);
         LLP_Packet receivedLLP = LLP_Packet.parsePacket(receiveData);
-        if (receivedLLP.getFINFlag() == 1) {
+
+        System.out.println("REMOTE SEQ " + this.expectedSeqNum);
+        if (!receivedLLP.isValidChecksum() || receivedLLP.getSequenceNum() != this.expectedSeqNum) {
+            System.out.println("CHECKSUM " + receivedLLP.isValidChecksum());
+            System.out.println("PACKET DISCARDED: SEQ " + "EXPECTED: " + this.expectedSeqNum + " RECEIVED: " + receivedLLP.getSequenceNum());
+
+            LLP_Packet ackPacket = new LLP_Packet(this.localSeq, this.expectedSeqNum, 0, windowSize);
+            ackPacket.setACKFlag(true);
+            byte[] sendData = ackPacket.toArray();
+
+            DatagramPacket ack = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
+            ensureSend(ack);
+            return null; // TODO: Returning null means client will have to check if null is returned -- is this what we want?
+        } else if (receivedLLP.getFINFlag() == 1) {
+            this.expectedSeqNum++;
+            // TODO: modify window size; may not even be necessary
+            LLP_Packet ackPacket = new LLP_Packet(this.localSeq, this.expectedSeqNum, 0, windowSize);
+            ackPacket.setACKFlag(true);
+            byte[] sendData = ackPacket.toArray();
+
+            DatagramPacket ack = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
+            ensureSend(ack);
+            System.out.println("LAST PACKET RECEIVED");
             recvdClose();
-            return null;
+            return receivedLLP.getData();
+
+        } else {
+            System.out.println("RECEIVED DATA: EXPECTED SEQ: " + this.expectedSeqNum + "RECEIVED SEQ " + receivedLLP.getAckNum());
+
+            this.expectedSeqNum++;
+
+            LLP_Packet ackPacket = new LLP_Packet(this.localSeq, this.expectedSeqNum, 0, windowSize);
+            ackPacket.setACKFlag(true);
+            byte[] sendData = ackPacket.toArray();
+
+            DatagramPacket ack = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
+            ensureSend(ack);
+            String reStr = new String(receivedLLP.getData());
+            System.out.println(reStr);
+            return receivedLLP.getData();
         }
 
-        System.out.println("RECEIVED DATA");
-        return receivedLLP.getData();
     }
 
     public void send(byte[] data) {
@@ -267,38 +301,85 @@ public class LLP_Socket {
 
         // Sequence number of the last packet
         int lastSeqNum = (int) Math.ceil((double) fileBuff.length / MAX_DATA_SIZE);
-
+        System.out.println("LOCAL SEQ NUM " + this.localSeq);
         // Seq Num of Last Sent Packet
-        this.localSeq = 0;
+//        this.localSeq = 0;
+
 
         // Map to store unAcknowledged packets
         Map<Integer, DatagramPacket> sentPackets = new HashMap<>();
 
         // While window not full and there is more data to send:
-        while (this.localSeq - waitingForAck < MAX_WINDOW_SIZE && this.localSeq < lastSeqNum) {
+        while(true) {
+            while (this.localSeq - waitingForAck < MAX_WINDOW_SIZE && this.localSeq < lastSeqNum) {
 
-            // Store packet data to send
-            byte[] sendPacketBytes = null;
-            if (this.localSeq * MAX_DATA_SIZE + MAX_DATA_SIZE > fileBuff.length) {
-                sendPacketBytes = Arrays.copyOfRange(fileBuff, this.localSeq*MAX_DATA_SIZE, fileBuff.length); // ensure last packet has no nulls
-            } else {
-                sendPacketBytes = Arrays.copyOfRange(fileBuff, this.localSeq*MAX_DATA_SIZE, this.localSeq*MAX_DATA_SIZE + MAX_DATA_SIZE);
+                // Store packet data to send
+                byte[] sendPacketBytes = null;
+                if (this.localSeq * MAX_DATA_SIZE + MAX_DATA_SIZE > fileBuff.length) {
+                    sendPacketBytes = Arrays.copyOfRange(fileBuff, this.localSeq*MAX_DATA_SIZE, fileBuff.length); // ensure last packet has no nulls
+                } else {
+                    sendPacketBytes = Arrays.copyOfRange(fileBuff, this.localSeq*MAX_DATA_SIZE, this.localSeq*MAX_DATA_SIZE + MAX_DATA_SIZE);
+                }
+
+                LLP_Packet sendPacketLLP = new LLP_Packet(this.localSeq, ++remoteSeq, 0, windowSize);
+                sendPacketLLP.setData(sendPacketBytes);
+                byte[] sendData = sendPacketLLP.toArray();
+                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
+
+
+                if (Math.random() > 0.1) {
+                    ensureSend(sendPacket);
+                } else {
+                    System.out.println("LOST PACKET");
+                }
+                // Add packet to sent map
+                sentPackets.put(this.localSeq, sendPacket);
+
+                System.out.println("SENT DATA " + this.localSeq);
+
+                this.localSeq++;
+                // TODO: Accept ACKs for sent packets
+
+                // TODO: Have timer
             }
 
-            LLP_Packet sendPacketLLP = new LLP_Packet(this.localSeq++, ++remoteSeq, 0, windowSize);
-            sendPacketLLP.setData(sendPacketBytes);
-            byte[] sendData = sendPacketLLP.toArray();
-            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
-            ensureSend(sendPacket);
-            // Add packet to sent map
-            sentPackets.put(this.localSeq, sendPacket);
+            try {
+                // Receive Acks
+                byte[] ackBytes = new byte[1024];
+                DatagramPacket ackPacket = new DatagramPacket(ackBytes, ackBytes.length);
 
-            System.out.println("SENT DATA " + this.localSeq);
+                socket.setSoTimeout(TIMER);
+                socket.receive(ackPacket);
 
-            // TODO: Accept ACKs for sent packets
+                LLP_Packet ackLLP = LLP_Packet.parsePacket(ackPacket.getData());
+                if (whichFlag(ackLLP) == "ACK") {
+                    System.out.println("RECEIVED ACK: " + ackLLP.getAckNum());
+                    System.out.println("LAST SEQ NUM " + lastSeqNum);
+                    // exit loop if last packet
+                    if (ackLLP.getAckNum() == lastSeqNum) {
+                        System.out.println("EXITING");
+                        break;
+                    }
+                    waitingForAck = Math.max(waitingForAck, ackLLP.getAckNum());
+                } else {
+                    // TODO: Handle this case
+                }
+            } catch (SocketTimeoutException e) {
+                System.out.println("RE TRANSMISSION");
+                // Re-send Packets
+                for (int i = waitingForAck; i < lastSeqNum; i++) {
+                    DatagramPacket resendPacket = sentPackets.get(i);
+                    ensureSend(resendPacket);
+                }
 
-            // TODO: Have timer
+            } catch (SocketException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
         }
+
     }
 
     public byte[] getInputStream() {

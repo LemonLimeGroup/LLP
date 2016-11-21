@@ -45,17 +45,18 @@ public class LLP_Client {
 
         while (!eof) {
             byte[] buff = socket.receive(1024);
-            try {
-                if(buff[buff.length-1] == 4){
-                    eof = true;
-                    out.write(buff, 0, buff.length-1);
-                }else{
-                    out.write(buff, 0, buff.length);
+            if (buff != null) { // since receive may return null
+                try {
+                    if(buff[buff.length-1] == 4){
+                        eof = true;
+                        out.write(buff, 0, buff.length-1);
+                    }else{
+                        out.write(buff, 0, buff.length);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
             }
-
         }
         System.out.println("FILE DOWNLOAD COMPLETE");
         try {
