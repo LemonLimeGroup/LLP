@@ -103,9 +103,17 @@ public class LLP_Client {
         } catch (UnknownHostException e){
             System.err.println("Caught UnknownHostException " + e.getMessage());
             System.exit(-1);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid port number passed in.");
+            System.exit(-1);
         }
-        if (args.length > 2 && args[2].equals("-d")) {
-            client.setDebug();
+        if (args.length > 2) {
+            if (args[2].equals("-d")) {
+                client.setDebug();
+            } else {
+                System.out.println("Invalid argument(s) passed in.");
+                System.exit(-1);
+            }
         }
 
         boolean exit = false;

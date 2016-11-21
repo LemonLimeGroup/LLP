@@ -104,7 +104,17 @@ public  class LLP_Server {
             System.out.println("Invalid arguments");
             System.exit(-1);
         }
-        int port = Integer.parseInt(args[0]);
+        int port = -1;
+        try {
+            port = Integer.parseInt(args[0]);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid port number passed in.");
+            System.exit(-1);
+        }
+        if (port > 65535 || port <= 1024) {
+            System.out.println("Invalid port number passed in.");
+            System.exit(-1);
+        }
         if (args.length == 2) {
             if ("-d".equals(args[1])) {
                 setDebug();
