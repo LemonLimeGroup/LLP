@@ -1,12 +1,8 @@
-import javax.xml.crypto.Data;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.net.*;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * Created by Sally on 11/12/16.
@@ -131,12 +127,11 @@ public class LLP_Socket {
      */
     public LLP_Socket accept() {
         byte[] receiveData = new byte[MAX_DATA_SIZE];
-        DatagramPacket receiveSYN = new DatagramPacket(receiveData, receiveData.length);
         // Receive SYN
         printDebug("WAITING FOR SYN FROM CLIENT");
         // TODO: Check that packet has SYN, otherwise need to switch states / wait;
 //        ensureRcv(receiveSYN);
-        receiveSYN = ensureFlag("SYN");
+        DatagramPacket receiveSYN = ensureRcvdFlag("SYN", null);
 
         printDebug("SEND A SYN-ACK TO CLIENT");
         // Send SYN-ACK
@@ -149,9 +144,7 @@ public class LLP_Socket {
         ensureSend(sendPacket);
 
         // Receive ACK
-        receiveData = new byte[MAX_DATA_SIZE];
-        DatagramPacket receiveACK = new DatagramPacket(receiveData, receiveData.length);
-        ensureRcv(receiveACK);
+        DatagramPacket receiveACK = ensureRcvdFlag("ACK", receiveSYN);
         System.out.println("CONNECTION ACCEPTED");
         LLP_Socket retSocket = new LLP_Socket(socket.getLocalPort(), socket.getLocalAddress(), sendPacket.getSocketAddress(), debug);
         // TODO: parse ACK and Seq Number
@@ -250,7 +243,7 @@ public class LLP_Socket {
         System.arraycopy(rawReceiveData, 0, receiveData, 0, receiveData.length);
         LLP_Packet receivedLLP = LLP_Packet.parsePacket(receiveData);
         if (receivedLLP.getFINFlag() == 1) {
-            recvdClose();
+            recvdClose(receivePacket);
             return null;
         }
 
@@ -351,7 +344,7 @@ public class LLP_Socket {
      * Right side of State diagram when trying to close
      * Called when either side receives FIN from the other end point
      * */
-    private void recvdClose() {
+    private void recvdClose(DatagramPacket receivedPacket) {
         //Received FIN. Sending ACK
         printDebug("Received FIN. Trying to send ACK");
 
@@ -372,7 +365,7 @@ public class LLP_Socket {
 
         printDebug("Successfully sent FIN. In LAST-ACK state.");
 
-        ensureFlag("ACK");
+        ensureRcvdFlag("ACK", receivedPacket);
 
         printDebug("Received ACK for FIN. Closing...");
         socket.close();
@@ -401,21 +394,29 @@ public class LLP_Socket {
         }
     }
 
-    private DatagramPacket ensureFlag(String flag) {
+    private DatagramPacket ensureRcvdFlag(String flag, DatagramPacket remotePacket) {
         boolean isFlag = false;
+        boolean isFromRightClient = false;
         byte[] trimmedRcvData;
-        LLP_Packet recvPacktLLP;
+        LLP_Packet recvPacketLLP;
         byte[] receiveData = new byte[MAX_DATA_SIZE];
         DatagramPacket recvPacket = new DatagramPacket(receiveData, receiveData.length);
 
-        while (!isFlag) {
+        if (remotePacket == null) {
+            isFromRightClient = true;
+        }
+
+        while (!isFlag || !isFromRightClient) {
             ensureRcv(recvPacket);
 
             trimmedRcvData = new byte[recvPacket.getLength()];
             System.arraycopy(receiveData, 0, trimmedRcvData, 0, trimmedRcvData.length);
-            recvPacktLLP = LLP_Packet.parsePacket(trimmedRcvData);
-            if (whichFlag(recvPacktLLP).equals(flag)) {
+            recvPacketLLP = LLP_Packet.parsePacket(trimmedRcvData);
+            if (whichFlag(recvPacketLLP).equals(flag)) {
                 isFlag = true;
+            }
+            if (!isFromRightClient && remotePacket.getSocketAddress().equals(recvPacket.getSocketAddress())) {
+                isFromRightClient = true;
             }
             printDebug("Did not receive " + flag + ". Waiting...");
         }
