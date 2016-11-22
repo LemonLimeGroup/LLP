@@ -50,6 +50,7 @@ public  class LLP_Server {
             while (true) {
                 System.out.println("In thread yay!");
                 byte[] bytes = conn.receive(1024);
+                //Arays.equals(bytes, "closed".getBytes())
                 if (bytes == null) {
                     clients.remove(conn);
                     return;

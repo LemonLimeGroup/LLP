@@ -54,8 +54,17 @@ public class LLP_Socket {
         } catch (SocketException e) {
             e.printStackTrace();
             System.out.println("Failed to create a socket");
-            return;
+            System.exit(-1); //TODO: shouldn't we try to make socket again?
         }
+//        isSuccessful = false;
+//        while (!isSuccessful) {
+//            try {
+//                socket.setSoTimeout(1000);
+//                isSuccessful = true;
+//            } catch (SocketException e) {
+//                System.out.println("Failed to set timeout. Retrying...");
+//            }
+//        }
         if (remoteAddress != null) {
             isSuccessful = false;
             while (!isSuccessful) {
@@ -98,10 +107,8 @@ public class LLP_Socket {
         // Receive SYN-ACK & initialize remote Seq Num
         System.out.println("WAITING FOR SYN-ACK FROM SERVER");
         byte[] receiveData = new byte[MAX_DATA_SIZE]; // based on max data size
-        DatagramPacket recvSynAckPacket = new DatagramPacket(receiveData, receiveData.length);
-        ensureRcv(recvSynAckPacket); // TODO: Check sequence number etc. ; window allocation done around here
+        DatagramPacket recvSynAckPacket = ensureRcvdFlag("SYN_ACK", synPacket); // TODO: Check sequence number etc. ; window allocation done around here
 
-        byte[] synAckArray = recvSynAckPacket.getData();
         //TODO: get remote sequence number
         // Send ACK
         System.out.println("SENDING ACK TO SERVER");
@@ -209,7 +216,7 @@ public class LLP_Socket {
             ensureRcvdFlag("ACK", finPacket);
         }
         //TODO: Timed-Wait or no?
-        System.out.println("Timed-Wait State.");
+        printDebug("Timed-Wait State.");
         socket.close();
     }
 
@@ -236,7 +243,7 @@ public class LLP_Socket {
         if (receivedLLP.getFINFlag() == 1) {
             recvdClose(receivePacket);
             //TODO: Return something else?
-            return null;
+            return "closed".getBytes();
         }
 
         System.out.println("RECEIVED DATA");
