@@ -11,10 +11,6 @@ import java.util.Scanner;
 public  class LLP_Server {
     private static boolean debug = false;
 
-    public static void window(LLP_Socket socket, int num) {
-        socket.setWindowSize(num);
-    }
-
     public static void terminate(LLP_Socket socket) {
         ArrayList<LLP_Socket> clientList =LLPThread.getClients();
         //TODO: need to fix client side so that it can receive FIN from server
@@ -23,13 +19,16 @@ public  class LLP_Server {
         }
         socket.closeServer();
         printDebug("Successfully terminated the server.");
-        // TODO: lots of "Failed to receive. Retyring..." because of threading
+        // TODO: lots of "Failed to receive. Retrying..." because of threading
         System.exit(0);
     }
     public static void setDebug() {
         debug = true;
     }
 
+    public static void window(LLP_Socket socket, int num) {
+        socket.setWindowSize(num);
+    }
     private static class LLPThread extends Thread {
         private FileInputStream fis;
         private BufferedInputStream bis;
@@ -43,6 +42,7 @@ public  class LLP_Server {
             this.conn = conn;
             clients.add(conn);
         }
+
         public static ArrayList<LLP_Socket> getClients() {
             return clients;
         }
@@ -82,6 +82,7 @@ public  class LLP_Server {
     private static class CommandThread extends Thread {
         private Scanner sc;
         private LLP_Socket serverSocket;
+        private ArrayList<LLP_Socket> clients;
         public CommandThread(Scanner sc, LLP_Socket serverSocket) {
             super();
             this.sc = sc;
@@ -89,9 +90,12 @@ public  class LLP_Server {
         }
         public void run() {
             String input = sc.next().toLowerCase();
+            clients = LLPThread.getClients();
             switch (input) {
                 case "window":
-                    window(serverSocket, Integer.parseInt(sc.next()));
+                    for (int iClient = 0; iClient < clients.size(); iClient++) {
+                        window(clients.get(iClient), Integer.parseInt(sc.next()));
+                    }
                     break;
                 case "terminate":
                     terminate(serverSocket);

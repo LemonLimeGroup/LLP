@@ -127,15 +127,37 @@ public class LLP_Client {
         }
 
         boolean exit = false;
+        boolean isConnected = false;
         while(!exit) {
             Scanner sc = new Scanner(System.in);
             String input = sc.next().toLowerCase();
-            switch (input){
-                case "post": client.post(sc.next()); break;
-                case "get": client.get(sc.next()); break;
-                case "connect": client.connect(); break;
-                case "disconnect": client.disconnect(); exit = true; break;
-                default: System.out.println("Command not recognized.");
+            if (!isConnected) {
+                switch (input) {
+                    case "connect":
+                        client.connect();
+                        break;
+                    default:
+                        System.out.println("Command not recognized.");
+                }
+                isConnected = true;
+            } else {
+                switch (input) {
+                    case "post":
+                        client.post(sc.next());
+                        break;
+                    case "get":
+                        client.get(sc.next());
+                        break;
+                    case "connect":
+                        System.out.println("Connection already established.");
+                        break;
+                    case "disconnect":
+                        client.disconnect();
+                        exit = true;
+                        break;
+                    default:
+                        System.out.println("Command not recognized.");
+                }
             }
         }
     }
