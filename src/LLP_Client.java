@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.Scanner;
 
 /**
@@ -45,7 +46,7 @@ public class LLP_Client {
 
         while (!eof) {
             byte[] buff = socket.receive(1024);
-            if (buff != null) { // since receive may return null
+            if (buff != null && buff.length > 0) { // since receive may return null
                 try {
                     if(buff[buff.length-1] == 4){
                         eof = true;
@@ -56,6 +57,16 @@ public class LLP_Client {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+            } else if (buff == null) {
+                printDebug("Server closed.");
+                try {
+                    out.close();
+                    new File("downloaded_" + fileloc).delete();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                System.exit(0);
             }
         }
         System.out.println("FILE DOWNLOAD COMPLETE");
@@ -74,6 +85,11 @@ public class LLP_Client {
     public void disconnect() {
         socket.close();
     }
+    private void printDebug(String statement) {
+        if (debug) {
+            System.out.println(statement);
+        }
+    }
 
     public static void main(String[] args) {
         if (args.length > 3) {
@@ -88,9 +104,17 @@ public class LLP_Client {
         } catch (UnknownHostException e){
             System.err.println("Caught UnknownHostException " + e.getMessage());
             System.exit(-1);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid port number passed in.");
+            System.exit(-1);
         }
-        if (args.length > 2 && args[2].equals("-d")) {
-            client.setDebug();
+        if (args.length > 2) {
+            if (args[2].equals("-d")) {
+                client.setDebug();
+            } else {
+                System.out.println("Invalid argument(s) passed in.");
+                System.exit(-1);
+            }
         }
 
         boolean exit = false;
