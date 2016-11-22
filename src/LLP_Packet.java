@@ -91,8 +91,9 @@ public class LLP_Packet {
         }
 
         if (getData() != null) {
-            for (int i = 0; i < data.length; i += 1) {
-                bitString += String.format("%8s", Integer.toBinaryString((int) data[i])).replace(' ', '0');
+            System.out.println("GET DATA LENGTH " + getData().length);
+            for (int i = 0; i < data.length; i++) {
+                bitString += String.format("%8s", Integer.toBinaryString(data[i] & 0xFF)).replace(' ', '0');
             }
             if (data.length % 2 != 0) {
                 bitString += "00000000";
@@ -100,7 +101,7 @@ public class LLP_Packet {
         }
 
         if (bitString.length() % 16 != 0) {
-            System.out.println("WARNING: BITSTRING NOT A MULTIPLE OF 0");
+            System.out.println("WARNING: BITSTRING NOT A MULTIPLE OF 16");
         }
 
         // Add the 16-bit chunks together
@@ -152,8 +153,9 @@ public class LLP_Packet {
         bitString += String.format("%10s", Integer.toBinaryString(windowSize)).replace(' ', '0');
 
         if (getData() != null) {
-            for (int i = 0; i < data.length; i += 1) {
-                bitString += String.format("%8s", Integer.toBinaryString((int) data[i])).replace(' ', '0');
+            System.out.println("GET DATA LENGTH " + getData().length);
+            for (int i = 0; i < data.length; i++) {
+                bitString += String.format("%8s", Integer.toBinaryString(data[i] & 0xFF)).replace(' ', '0');
             }
             if (data.length % 2 != 0) {
                 bitString += "00000000";
