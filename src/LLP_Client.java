@@ -48,15 +48,20 @@ public class LLP_Client {
             byte[] buff = socket.receive(1024);
             if (buff != null && buff.length > 0) { // since receive may return null
                 try {
-                    if(buff[buff.length-1] == 4){
+                    if (buff[buff.length - 1] == 4) {
+                        out.write(buff, 0, buff.length - 1);
+                        socket.setTimeout(true);
+                    } else if (Arrays.equals(buff, "timeout".getBytes())) {
+                        // timeout
+                        printDebug("Timeout");
                         eof = true;
-                        out.write(buff, 0, buff.length-1);
-                    }else{
+                    } else {
                         out.write(buff, 0, buff.length);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+
             } else if (buff == null) {
                 printDebug("Server closed.");
                 try {
@@ -67,9 +72,13 @@ public class LLP_Client {
                 }
 
                 System.exit(0);
+            } else {
+                //empty array
+                printDebug("Discarded packets");
             }
         }
         System.out.println("FILE DOWNLOAD COMPLETE");
+        socket.setTimeout(false);
         try {
             out.close();
         } catch (IOException e) {

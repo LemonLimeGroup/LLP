@@ -8,18 +8,23 @@ import java.util.Map;
  * Created by Sally on 11/12/16.
  */
 public class LLP_Socket {
+    //FINAL VARIABLES
     private static final int MAX_WINDOW_SIZE = 50;
     private static final int MAX_DATA_SIZE = 1012;
-    private static final int TIMER = 5;
-    private byte[] send_buffer;
+    private static final int TIMER = 500;
+    //RECEIVE
     private byte[] receive_buffer;
-    private int sendSize;
     private int receiveSize;
     private int windowSize;
-    private DatagramSocket socket;
-    private int localSeq;
     private int remoteSeq;
     private int expectedSeqNum;
+    //SEND
+    private byte[] send_buffer;
+    private int sendSize;
+    private int localSeq;
+    private int waitingForAck;
+    //OTHER
+    private DatagramSocket socket;
     private InetAddress destAddress;
     private int destPort;
     boolean debug;
@@ -86,6 +91,7 @@ public class LLP_Socket {
         receiveSize = 0;
         windowSize = 50; // default window size, unless initialized by the application
         localSeq = 0;
+        waitingForAck = 0;
     }
 
     /**
@@ -231,7 +237,9 @@ public class LLP_Socket {
 
         byte[] rawReceiveData = new byte[maxSize];
         DatagramPacket receivePacket = new DatagramPacket(rawReceiveData, rawReceiveData.length);
-        ensureRcv(receivePacket);
+        if (!ensureRcv(receivePacket)) {
+            return "timeout".getBytes();
+        }
 
         // create new byte array without the empty unused buffer
         byte[] receiveData = new byte[receivePacket.getLength()];
@@ -245,9 +253,9 @@ public class LLP_Socket {
         }
 
         System.out.println("REMOTE SEQ " + this.expectedSeqNum);
-        if (!receivedLLP.isValidChecksum() || receivedLLP.getSequenceNum() != this.expectedSeqNum) {
+        if (!receivedLLP.isValidChecksum() || receivedLLP.getSeqNum() != this.expectedSeqNum) {
             System.out.println("CHECKSUM " + receivedLLP.isValidChecksum());
-            System.out.println("PACKET DISCARDED: SEQ " + "EXPECTED: " + this.expectedSeqNum + " RECEIVED: " + receivedLLP.getSequenceNum());
+            System.out.println("PACKET DISCARDED: SEQ " + "EXPECTED: " + this.expectedSeqNum + " RECEIVED: " + receivedLLP.getSeqNum());
 
             LLP_Packet ackPacket = new LLP_Packet(this.localSeq, this.expectedSeqNum, 0, windowSize);
             ackPacket.setACKFlag(true);
@@ -257,18 +265,16 @@ public class LLP_Socket {
             ensureSend(ack);
             return new byte[0]; // TODO: Returning empty array means client will have to check if null is returned -- is this what we want?
         } else {
-            System.out.println("RECEIVED DATA: EXPECTED SEQ: " + this.expectedSeqNum + "RECEIVED SEQ " + receivedLLP.getAckNum());
+            System.out.println("RECEIVED DATA: EXPECTED SEQ: " + this.expectedSeqNum + "RECEIVED SEQ " + receivedLLP.getSeqNum());
 
-            this.expectedSeqNum++;
-
-            LLP_Packet ackPacket = new LLP_Packet(this.localSeq, this.expectedSeqNum, 0, windowSize);
+            LLP_Packet ackPacket = new LLP_Packet(this.localSeq, ++this.expectedSeqNum, 0, windowSize);
             ackPacket.setACKFlag(true);
             byte[] sendData = ackPacket.toArray();
 
             DatagramPacket ack = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
             ensureSend(ack);
             String reStr = new String(receivedLLP.getData());
-            System.out.println(reStr);
+            System.out.println("reStr: " + reStr);
             return receivedLLP.getData();
         }
     }
@@ -278,10 +284,10 @@ public class LLP_Socket {
         byte[] fileBuff = data;
 
         // Seq num of last ACKed packet
-        int waitingForAck = 0;
 
         // Sequence number of the last packet
-        int lastSeqNum = (int) Math.ceil((double) fileBuff.length / MAX_DATA_SIZE);
+        int startSeqNum = this.localSeq;
+        int lastNumPackets = ((int) Math.ceil((double) fileBuff.length / MAX_DATA_SIZE));
         System.out.println("LOCAL SEQ NUM " + this.localSeq);
         // Seq Num of Last Sent Packet
 //        this.localSeq = 0;
@@ -292,14 +298,15 @@ public class LLP_Socket {
 
         // While window not full and there is more data to send:
         while(true) {
-            while (this.localSeq - waitingForAck < MAX_WINDOW_SIZE && this.localSeq < lastSeqNum) {
+            while (this.localSeq - waitingForAck < MAX_WINDOW_SIZE && this.localSeq < lastNumPackets+startSeqNum) {
 
                 // Store packet data to send
                 byte[] sendPacketBytes = null;
-                if (this.localSeq * MAX_DATA_SIZE + MAX_DATA_SIZE > fileBuff.length) {
-                    sendPacketBytes = Arrays.copyOfRange(fileBuff, this.localSeq*MAX_DATA_SIZE, fileBuff.length); // ensure last packet has no nulls
+                int startPos = (this.localSeq-startSeqNum)*MAX_DATA_SIZE;
+                if (startPos + MAX_DATA_SIZE > fileBuff.length) {
+                    sendPacketBytes = Arrays.copyOfRange(fileBuff, startPos, fileBuff.length); // ensure last packet has no nulls
                 } else {
-                    sendPacketBytes = Arrays.copyOfRange(fileBuff, this.localSeq*MAX_DATA_SIZE, this.localSeq*MAX_DATA_SIZE + MAX_DATA_SIZE);
+                    sendPacketBytes = Arrays.copyOfRange(fileBuff, startPos, startPos + MAX_DATA_SIZE);
                 }
 
                 LLP_Packet sendPacketLLP = new LLP_Packet(this.localSeq, ++remoteSeq, 0, windowSize);
@@ -331,25 +338,28 @@ public class LLP_Socket {
 
                 socket.setSoTimeout(TIMER);
                 socket.receive(ackPacket);
-
+                System.out.println("packet received: " + new String(ackPacket.getData()));
                 LLP_Packet ackLLP = LLP_Packet.parsePacket(ackPacket.getData());
-                if (whichFlag(ackLLP) == "ACK") {
+                if (whichFlag(ackLLP).equals("ACK")) {
                     System.out.println("RECEIVED ACK: " + ackLLP.getAckNum());
-                    System.out.println("LAST SEQ NUM " + lastSeqNum);
-                    // exit loop if last packet
-                    if (ackLLP.getAckNum() == lastSeqNum) {
-                        System.out.println("EXITING");
-                        break;
-                    }
+                    System.out.println("LAST SEQ NUM " + lastNumPackets);
                     waitingForAck = Math.max(waitingForAck, ackLLP.getAckNum());
+                    // exit loop if last packet
+                    if (ackLLP.getAckNum() == lastNumPackets+startSeqNum) {
+                        System.out.println("EXITING");
+                        socket.setSoTimeout(0);
+                        return;
+                    }
                 } else {
                     // TODO: Handle this case
                 }
             } catch (SocketTimeoutException e) {
                 System.out.println("RE TRANSMISSION");
+
                 // Re-send Packets
                 for (int i = waitingForAck; i < this.localSeq; i++) {
                     DatagramPacket resendPacket = sentPackets.get(i);
+                    System.out.println("i: " + i + "resendPacket: " + resendPacket);
                     ensureSend(resendPacket);
                 }
 
@@ -398,16 +408,20 @@ public class LLP_Socket {
             }
         }
     }
-    private void ensureRcv(DatagramPacket recvPckt) {
+    private boolean ensureRcv (DatagramPacket recvPckt) {
         boolean isSuccessful = false;
         while (!isSuccessful) {
             try {
                 socket.receive(recvPckt);
                 isSuccessful = true;
+                return isSuccessful;
+            } catch (SocketTimeoutException e) {
+                return false;
             } catch (IOException e) {
                 System.out.println("Failed to receive. Retrying...");
             }
         }
+        return isSuccessful;
     }
     /**
      * Right side of State diagram when trying to close
@@ -491,6 +505,20 @@ public class LLP_Socket {
         }
 
         return recvPacket;
+    }
+
+    //TODO: DELETE METHODS BELOW
+    public boolean isClosed() {
+        return socket.isClosed();
+    }
+
+    public void setTimeout(boolean on) {
+        int timeout = on? TIMER+1000 : 0;
+        try {
+            socket.setSoTimeout(timeout);
+        } catch (SocketException e) {
+            printDebug("Failed to set timeout");
+        }
     }
 }
 

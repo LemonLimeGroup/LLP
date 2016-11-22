@@ -6,7 +6,7 @@ import java.util.Arrays;
  */
 public class LLP_Packet {
 
-    private int sequenceNum;
+    private int seqNum;
     private int ackNum;
     private int dataOffset;
     private int checksum;
@@ -22,13 +22,13 @@ public class LLP_Packet {
         this(0, 0, 0, 0, 0, false, false, false, false);
     }
 
-    public LLP_Packet(int sequenceNum, int ackNum, int checksum, int windowSize) {
-        this(sequenceNum, ackNum, 0, checksum, windowSize, false, false, false, false);
+    public LLP_Packet(int seqNum, int ackNum, int checksum, int windowSize) {
+        this(seqNum, ackNum, 0, checksum, windowSize, false, false, false, false);
     }
 
-    public LLP_Packet(int sequenceNum, int ackNum, int dataOffset, int checksum, int windowSize,
+    public LLP_Packet(int seqNum, int ackNum, int dataOffset, int checksum, int windowSize,
                       boolean ACK, boolean RST, boolean SYN, boolean FIN) {
-        this.sequenceNum = sequenceNum;
+        this.seqNum = seqNum;
         this.ackNum = ackNum;
         this.dataOffset = dataOffset;
         this.checksum = checksum;
@@ -43,7 +43,7 @@ public class LLP_Packet {
     public byte[] createHeader() {
         ByteBuffer buff = ByteBuffer.allocate(12);
 
-        String seqString = String.format("%32s", Integer.toBinaryString(sequenceNum)).replace(' ', '0');
+        String seqString = String.format("%32s", Integer.toBinaryString(seqNum)).replace(' ', '0');
         String ackString = String.format("%32s", Integer.toBinaryString(ackNum)).replace(' ', '0');
 
         buff.putInt(Integer.parseInt(seqString, 2));
@@ -77,7 +77,7 @@ public class LLP_Packet {
 
         // Combine the header into one 80-bit string to segment later
         String bitString = "";
-        bitString += String.format("%32s", Integer.toBinaryString(sequenceNum)).replace(' ', '0');
+        bitString += String.format("%32s", Integer.toBinaryString(seqNum)).replace(' ', '0');
         bitString += String.format("%32s", Integer.toBinaryString(ackNum)).replace(' ', '0');
         bitString += String.format("%2s", Integer.toBinaryString(dataOffset)).replace(' ', '0');
         bitString += Integer.toBinaryString(ACK);
@@ -129,7 +129,7 @@ public class LLP_Packet {
 
         // Combine the header into one 80-bit string to segment later
         String bitString = "";
-        bitString += String.format("%32s", Integer.toBinaryString(sequenceNum)).replace(' ', '0');
+        bitString += String.format("%32s", Integer.toBinaryString(seqNum)).replace(' ', '0');
         bitString += String.format("%32s", Integer.toBinaryString(ackNum)).replace(' ', '0');
         bitString += String.format("%2s", Integer.toBinaryString(dataOffset)).replace(' ', '0');
         bitString += Integer.toBinaryString(ACK);
@@ -181,7 +181,7 @@ public class LLP_Packet {
         LLP_Packet packet = new LLP_Packet();
 
         // Parse Data
-        packet.setSequenceNum(wrapped.getInt()); // 32-bit seq num
+        packet.setSeqNum(wrapped.getInt()); // 32-bit seq num
         packet.setAckNum(wrapped.getInt()); // 32-bit  ack num
 
         int rest = wrapped.getInt();
@@ -205,8 +205,8 @@ public class LLP_Packet {
     public int getFINFlag() {
         return FIN;
     }
-    public int getSequenceNum() {
-        return sequenceNum;
+    public int getSeqNum() {
+        return seqNum;
     }
     public int getAckNum() {
         return ackNum;
@@ -263,8 +263,8 @@ public class LLP_Packet {
         return this.data;
     }
 
-    public void setSequenceNum(int sequenceNum) {
-        this.sequenceNum = sequenceNum;
+    public void setSeqNum(int seqNum) {
+        this.seqNum = seqNum;
     }
 
     public void setAckNum(int ackNum) {
@@ -294,12 +294,12 @@ public class LLP_Packet {
         byte[] bytes = test.getHeader();
         System.out.println("ORIGINAL PACKET: WINDOW " + test.getWindowSize()
                 + " ACK " + test.getAckNum()
-                + " SEQ " + test.getSequenceNum());
+                + " SEQ " + test.getSeqNum());
 
         LLP_Packet testParsedPacket = LLP_Packet.parsePacket(bytes);
         System.out.println("RECEIVED PACKET: WINDOW " + testParsedPacket.getWindowSize()
                 + " ACK " + testParsedPacket.getAckNum()
-                + " SEQ " + testParsedPacket.getSequenceNum());
+                + " SEQ " + testParsedPacket.getSeqNum());
 
 
         System.out.println("IS VALID CHECKSUM: " + test.isValidChecksum());

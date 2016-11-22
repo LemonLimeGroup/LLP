@@ -49,6 +49,7 @@ public  class LLP_Server {
         public void run() {
             while (true) {
                 System.out.println("In thread yay!");
+                System.out.println("is closed? " + conn.isClosed());
                 byte[] bytes = conn.receive(1024);
                 //Arays.equals(bytes, "closed".getBytes())
                 if (bytes == null) {
