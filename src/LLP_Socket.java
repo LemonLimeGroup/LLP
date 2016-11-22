@@ -14,7 +14,7 @@ import java.util.function.Function;
  * Created by Sally on 11/12/16.
  */
 public class LLP_Socket {
-    private static final int MAX_WINDOW_SIZE = 20480;
+    private static final int MAX_WINDOW_SIZE = 50;
     private static final int MAX_DATA_SIZE = 1012;
     private static final int TIMER = 5;
     private byte[] send_buffer;
@@ -367,7 +367,7 @@ public class LLP_Socket {
             } catch (SocketTimeoutException e) {
                 System.out.println("RE TRANSMISSION");
                 // Re-send Packets
-                for (int i = waitingForAck; i < lastSeqNum; i++) {
+                for (int i = waitingForAck; i < this.localSeq; i++) {
                     DatagramPacket resendPacket = sentPackets.get(i);
                     ensureSend(resendPacket);
                 }
