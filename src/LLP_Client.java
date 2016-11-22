@@ -45,7 +45,7 @@ public class LLP_Client {
 
         while (!eof) {
             byte[] buff = socket.receive(1024);
-            if (buff.length > 0 && buff != null) { // since receive may return null
+            if (buff != null && buff.length > 0) { // since receive may return null
                 try {
                     if (buff[buff.length - 1] == 4) {
                         eof = true;

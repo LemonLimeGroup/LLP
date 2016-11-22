@@ -10,7 +10,7 @@ import java.util.Map;
  * Created by Sally on 11/12/16.
  */
 public class LLP_Socket {
-    private static final int MAX_WINDOW_SIZE = 20480;
+    private static final int MAX_WINDOW_SIZE = 50;
     private static final int MAX_DATA_SIZE = 1012;
     private static final int TIMER = 5;
     private byte[] send_buffer;
@@ -234,7 +234,7 @@ public class LLP_Socket {
         LLP_Packet receivedLLP = LLP_Packet.parsePacket(receiveData);
 
         System.out.println("REMOTE SEQ " + this.expectedSeqNum);
-        
+
         if (receivedLLP.getFINFlag() == 1) {
             recvdClose(receivePacket);
             //TODO: Return something else?
@@ -252,7 +252,7 @@ public class LLP_Socket {
             ensureSend(ack);
             return null; // TODO: Returning null means client will have to check if null is returned -- is this what we want?
         } else {
-            System.out.println("RECEIVED DATA: EXPECTED SEQ: " + this.expectedSeqNum + "RECEIVED SEQ " + receivedLLP.getAckNum());
+            System.out.println("RECEIVED DATA: EXPECTED SEQ: " + this.expectedSeqNum + "RECEIVED SEQ " + receivedLLP.getSequenceNum());
 
             this.expectedSeqNum++;
 
