@@ -90,6 +90,20 @@ public class LLP_Packet {
             System.out.println("WARNING: BITSTRING NOT EXPECTED LENGTH. Found: " + bitString.length() + " Expected: " + 80);
         }
 
+        if (getData() != null) {
+            System.out.println("GET DATA LENGTH " + getData().length);
+            for (int i = 0; i < data.length; i++) {
+                bitString += String.format("%8s", Integer.toBinaryString(data[i] & 0xFF)).replace(' ', '0');
+            }
+            if (data.length % 2 != 0) {
+                bitString += "00000000";
+            }
+        }
+
+        if (bitString.length() % 16 != 0) {
+            System.out.println("WARNING: BITSTRING NOT A MULTIPLE OF 16");
+        }
+
         // Add the 16-bit chunks together
         int checksum = 0;
         for (int i = 0; i <= bitString.length() - 16; i += 16) {
@@ -137,12 +151,22 @@ public class LLP_Packet {
         bitString += Integer.toBinaryString(SYN);
         bitString += Integer.toBinaryString(FIN);
         bitString += String.format("%10s", Integer.toBinaryString(windowSize)).replace(' ', '0');
+
+        if (getData() != null) {
+            System.out.println("GET DATA LENGTH " + getData().length);
+            for (int i = 0; i < data.length; i++) {
+                bitString += String.format("%8s", Integer.toBinaryString(data[i] & 0xFF)).replace(' ', '0');
+            }
+            if (data.length % 2 != 0) {
+                bitString += "00000000";
+            }
+        }
+
         // Include the checksum
         bitString += String.format("%16s", Integer.toBinaryString(checksum)).replace(' ', '0');
 
-
-        if (bitString.length() != 96) {
-            System.out.println("WARNING: BITSTRING NOT EXPECTED LENGTH. Found: " + bitString.length() + " Expected: " + 96);
+        if (bitString.length() % 16 != 0) {
+            System.out.println("WARNING: BITSTRING NOT A MULTIPLE OF 16. Found: " + bitString.length());
         }
 
         // Add the 16-bit chunks together
