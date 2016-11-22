@@ -48,8 +48,11 @@ public class LLP_Client {
             byte[] buff = socket.receive(1024);
             if (buff != null && buff.length > 0) { // since receive may return null
                 try {
-                    if (buff[buff.length - 1] == 4) {
-                        out.write(buff, 0, buff.length - 1);
+                    if (buff[buff.length - 1] == 4
+                            && buff[buff.length - 2] == 'F'
+                            && buff[buff.length - 3] == 'O'
+                            && buff[buff.length - 4] == 'E') {
+                        out.write(buff, 0, buff.length - 4);
                         socket.setTimeout(true);
                     } else if (Arrays.equals(buff, "timeout".getBytes())) {
                         // timeout

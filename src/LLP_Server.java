@@ -60,7 +60,7 @@ public  class LLP_Server {
                 System.out.println(filename);
 
                 File file = new File(filename);
-                byte[] mybytearray = new byte[(int) file.length() + 1];
+                byte[] mybytearray = new byte[(int) file.length() + 4];
                 try {
                     fis = new FileInputStream(file);
                 } catch (FileNotFoundException e) {
@@ -74,6 +74,10 @@ public  class LLP_Server {
                     e.printStackTrace();
                 }
                 mybytearray[mybytearray.length - 1] = 4;
+                mybytearray[mybytearray.length - 2] = 'F';
+                mybytearray[mybytearray.length - 3] = 'O';
+                mybytearray[mybytearray.length - 4] = 'E';
+
                 conn.send(mybytearray);
             }
         }
