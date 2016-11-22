@@ -243,7 +243,7 @@ public class LLP_Socket {
         if (receivedLLP.getFINFlag() == 1) {
             recvdClose(receivePacket);
             //TODO: Return something else?
-            return "closed".getBytes();
+            return null;
         }
 
         System.out.println("RECEIVED DATA");
