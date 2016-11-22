@@ -274,7 +274,7 @@ public class LLP_Socket {
             DatagramPacket ack = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
             ensureSend(ack);
             String reStr = new String(receivedLLP.getData());
-            System.out.println("reStr: " + reStr);
+            System.out.println(reStr);
             return receivedLLP.getData();
         }
     }
