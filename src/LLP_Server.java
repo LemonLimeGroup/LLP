@@ -1,9 +1,5 @@
 import java.io.*;
-<<<<<<< HEAD
 import java.net.SocketException;
-import java.nio.charset.StandardCharsets;
-=======
->>>>>>> c0f5166bc49e380c44efce7f458f286a92564f90
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -18,6 +14,10 @@ public  class LLP_Server {
     public static void terminate(LLP_Socket socket) {
         ArrayList<LLP_Socket> clientList =LLPThread.getClients();
         //TODO: need to fix client side so that it can receive FIN from server
+        for (int iClient = 0; iClient < clientList.size(); iClient++) {
+            System.out.println("I'm inside the for loop");
+            ((LLPThread) clientThread.get(iClient)).setTerminate();
+        }
         for (int iClient = 0; iClient < clientList.size(); iClient++) {
             clientList.remove(iClient).close();
         }
@@ -48,7 +48,9 @@ public  class LLP_Server {
             terminate = false;
             clients.add(conn);
         }
-
+        public void setTerminate() {
+            terminate = true;
+        }
         public static ArrayList<LLP_Socket> getClients() {
             return clients;
         }
@@ -57,8 +59,7 @@ public  class LLP_Server {
                 System.out.println("In thread yay!");
                 System.out.println("is closed? " + conn.isClosed());
                 byte[] bytes = conn.receive(1024);
-                //Arays.equals(bytes, "closed".getBytes())
-                if (bytes == null) {
+                if (terminate || bytes == null) {
                     clients.remove(conn);
                     return;
                 }
@@ -135,7 +136,7 @@ public  class LLP_Server {
                     } catch (FileNotFoundException e) {
                         try {
                             conn.send("filenotfound".getBytes());
-                        } catch (SocketException e) {
+                        } catch (SocketException timeOut) {
                             printDebug("Failed to catch");
                         }
                         continue;
@@ -158,12 +159,7 @@ public  class LLP_Server {
                     }
                 }
             }
-        }
-        public LLP_Socket getConnSocket() {
-            return conn;
-        }
-        public void setTerminate() {
-            terminate = true;
+            System.out.println("I have terminated");
         }
     }
 
@@ -181,8 +177,9 @@ public  class LLP_Server {
             clients = LLPThread.getClients();
             switch (input) {
                 case "window":
+                    int windowSz = sc.nextInt();
                     for (int iClient = 0; iClient < clients.size(); iClient++) {
-                        window(clients.get(iClient), Integer.parseInt(sc.next()));
+                        window(clients.get(iClient), windowSz);
                     }
                     break;
                 case "terminate":
