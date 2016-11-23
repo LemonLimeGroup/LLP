@@ -29,7 +29,6 @@ public class LLP_Socket {
        this(-1, null, debug);
     }
 
-
     public LLP_Socket(int localPort, boolean debug) throws IllegalArgumentException {
        this(localPort, null, debug);
     }
@@ -116,9 +115,9 @@ public class LLP_Socket {
 
         LLP_Packet synReceive = LLP_Packet.parsePacket(synPacket.getData());
         // TODO: update seq numbers
-        int windowTemp = synReceive.getWindowSize();
-        System.out.println("WINDOW " + windowTemp);
-        setRcvWindowSize(windowTemp);
+
+        // Set the receive window
+        setRcvWindowSize(synReceive.getWindowSize());
 
         setDestAddress(address);
         setDestPort(port);
@@ -144,6 +143,7 @@ public class LLP_Socket {
         }
         LLP_Packet receiveSYNLLP = LLP_Packet.parsePacket(receiveSYN.getData());
         remoteSeq = receiveSYNLLP.getSeqNum();
+        setRcvWindowSize(receiveSYNLLP.getWindowSize());
 
         LLP_Packet synAckPacketLLP = new LLP_Packet(localSeq, expectedSeqNum, 0, myWindowSize); // TODO: compute window size
         synAckPacketLLP.setACKFlag(true);
@@ -159,6 +159,7 @@ public class LLP_Socket {
             // Receive ACK
             printDebug("Receive ACK from Client.");
         }
+
         System.out.println("CONNECTION ACCEPTED");
         LLP_Socket retSocket = new LLP_Socket(socket.getLocalPort(), socket.getLocalAddress(), receiveSYN.getSocketAddress(), debug);
         // TODO: parse ACK and Seq Number
@@ -504,7 +505,8 @@ public class LLP_Socket {
     }
 
     public void setRcvWindowSize(int rcvWindowSize) {
-        this.rcvWindowSize = this.rcvWindowSize;
+        printDebug("RECEIVE WINDOW SIZE SET TO: " + rcvWindowSize);
+        this.rcvWindowSize = rcvWindowSize;
     }
 
     //TODO: DELETE METHODS BELOW

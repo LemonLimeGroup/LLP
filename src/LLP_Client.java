@@ -34,7 +34,6 @@ public class LLP_Client {
 
     public void setWindowSize(int windowSize) {
         socket.setMyWindowSize(windowSize);
-        printDebug("Client Window Size Updated To: " + windowSize);
     }
 
     public void get(String fileloc){
