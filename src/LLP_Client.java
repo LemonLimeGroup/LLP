@@ -57,6 +57,12 @@ public class LLP_Client {
                     } else if (Arrays.equals(buff, "timeout".getBytes())) {
                         // timeout
                         printDebug("Timeout");
+                        System.out.println("FILE DOWNLOAD COMPLETE");
+                        eof = true;
+                    } else if (Arrays.equals(buff, "filenotfound".getBytes())){
+                        System.out.println("This file does not exist. Please try another file.");
+                        out.close();
+                        new File("downloaded_" + fileloc).delete();
                         eof = true;
                     } else {
                         out.write(buff, 0, buff.length);
@@ -80,7 +86,6 @@ public class LLP_Client {
                 printDebug("Discarded packets");
             }
         }
-        System.out.println("FILE DOWNLOAD COMPLETE");
         socket.setTimeout(false);
         try {
             out.close();

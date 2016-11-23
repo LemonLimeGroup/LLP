@@ -64,9 +64,9 @@ public  class LLP_Server {
                 try {
                     fis = new FileInputStream(file);
                 } catch (FileNotFoundException e) {
-                    e.printStackTrace();
+                    conn.send("filenotfound".getBytes());
+                    continue;
                 }
-
                 bis = new BufferedInputStream(fis);
                 try {
                     bis.read(mybytearray, 0, mybytearray.length);
