@@ -56,29 +56,99 @@ public  class LLP_Server {
                     clients.remove(conn);
                     return;
                 }
-                String filename = new String(bytes);
-                System.out.println(filename);
 
-                File file = new File(filename);
-                byte[] mybytearray = new byte[(int) file.length() + 4];
-                try {
-                    fis = new FileInputStream(file);
-                } catch (FileNotFoundException e) {
-                    conn.send("filenotfound".getBytes());
-                    continue;
-                }
-                bis = new BufferedInputStream(fis);
-                try {
-                    bis.read(mybytearray, 0, mybytearray.length);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                mybytearray[mybytearray.length - 1] = 4;
-                mybytearray[mybytearray.length - 2] = 'F';
-                mybytearray[mybytearray.length - 3] = 'O';
-                mybytearray[mybytearray.length - 4] = 'E';
+                if (Arrays.equals(bytes, "post".getBytes())) { // POST
+                    System.out.println("POOOOOOOOSSTTTTTT");
+                    FileOutputStream out = null;
 
-                conn.send(mybytearray);
+                    String fileloc = new String("randomString.txt");
+                    System.out.println("RECEIVED FILENAME " + fileloc);
+
+                    // Receive file
+                    try {
+                        out = new FileOutputStream("downloaded_" + fileloc);
+                    } catch (FileNotFoundException e) {
+                        conn.send("notgood".getBytes());
+                        e.printStackTrace();
+                    }
+
+//                    conn.send("ready".getBytes());
+
+                    boolean eof = false;
+
+                    while (!eof) {
+                        byte[] buff = conn.receive(1024);
+                        if (buff != null && buff.length > 0) { // since receive may return null
+                            try {
+                                if (buff[buff.length - 1] == 4
+                                        && buff[buff.length - 2] == 'F'
+                                        && buff[buff.length - 3] == 'O'
+                                        && buff[buff.length - 4] == 'E') {
+                                    out.write(buff, 0, buff.length - 4);
+                                    conn.setTimeout(true);
+                                } else if (Arrays.equals(buff, "timeout".getBytes())) {
+                                    // timeout
+                                    printDebug("Timeout");
+                                    System.out.println("FILE DOWNLOAD COMPLETE");
+                                    eof = true;
+                                } else if (Arrays.equals(buff, "filenotfound".getBytes())){
+                                    System.out.println("This file does not exist. Please try another file.");
+                                    out.close();
+                                    new File("downloaded_" + fileloc).delete();
+                                    eof = true;
+                                } else {
+                                    out.write(buff, 0, buff.length);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                        } else if (buff == null) {
+                            printDebug("Server closed.");
+                            try {
+                                out.close();
+                                new File("downloaded_" + fileloc).delete();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            System.exit(0);
+                        } else {
+                            //empty array
+                            printDebug("Discarded packets");
+                        }
+                    }
+                    conn.setTimeout(false);
+                    try {
+                        out.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                } else { // GET
+                    String filename = new String(bytes);
+                    System.out.println(filename);
+
+                    File file = new File(filename);
+                    byte[] mybytearray = new byte[(int) file.length() + 4];
+                    try {
+                        fis = new FileInputStream(file);
+                    } catch (FileNotFoundException e) {
+                        conn.send("filenotfound".getBytes());
+                        continue;
+                    }
+                    bis = new BufferedInputStream(fis);
+                    try {
+                        bis.read(mybytearray, 0, mybytearray.length);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    mybytearray[mybytearray.length - 1] = 4;
+                    mybytearray[mybytearray.length - 2] = 'F';
+                    mybytearray[mybytearray.length - 3] = 'O';
+                    mybytearray[mybytearray.length - 4] = 'E';
+
+                    conn.send(mybytearray);
+                }
             }
         }
     }

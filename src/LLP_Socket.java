@@ -322,9 +322,6 @@ public class LLP_Socket {
                 System.out.println("SENT DATA " + this.localSeq);
 
                 this.localSeq++;
-                // TODO: Accept ACKs for sent packets
-
-                // TODO: Have timer
             }
 
             // Receive Acks

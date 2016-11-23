@@ -96,7 +96,32 @@ public class LLP_Client {
     }
 
     public void post(String fileloc){
-        // extra credit
+        FileInputStream fis;
+        BufferedInputStream bis;
+
+        File file = new File(fileloc);
+        byte[] mybytearray = new byte[(int) file.length() + 4];
+        try {
+            fis = new FileInputStream(file);
+        } catch (FileNotFoundException e) {
+            socket.send("filenotfound".getBytes());
+            return;
+        }
+        // Notify server of post
+        socket.send("post".getBytes());
+
+        bis = new BufferedInputStream(fis);
+        try {
+            bis.read(mybytearray, 0, mybytearray.length);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        mybytearray[mybytearray.length - 1] = 4;
+        mybytearray[mybytearray.length - 2] = 'F';
+        mybytearray[mybytearray.length - 3] = 'O';
+        mybytearray[mybytearray.length - 4] = 'E';
+
+        socket.send(mybytearray);
     }
 
     public void disconnect() {
