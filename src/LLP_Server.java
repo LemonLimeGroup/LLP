@@ -1,9 +1,5 @@
 import java.io.*;
-<<<<<<< HEAD
 import java.net.SocketException;
-import java.nio.charset.StandardCharsets;
-=======
->>>>>>> c0f5166bc49e380c44efce7f458f286a92564f90
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -31,6 +27,7 @@ public  class LLP_Server {
     }
 
     public static void window(LLP_Socket socket, int num) {
+        System.out.println("setting window size");
         socket.setMyWindowSize(num);
     }
     private static class LLPThread extends Thread {
@@ -135,7 +132,7 @@ public  class LLP_Server {
                     } catch (FileNotFoundException e) {
                         try {
                             conn.send("filenotfound".getBytes());
-                        } catch (SocketException e) {
+                        } catch (SocketException e1) {
                             printDebug("Failed to catch");
                         }
                         continue;
@@ -181,8 +178,9 @@ public  class LLP_Server {
             clients = LLPThread.getClients();
             switch (input) {
                 case "window":
+                    int windowSz = sc.nextInt();
                     for (int iClient = 0; iClient < clients.size(); iClient++) {
-                        window(clients.get(iClient), Integer.parseInt(sc.next()));
+                        window(clients.get(iClient), windowSz);
                     }
                     break;
                 case "terminate":
@@ -230,9 +228,6 @@ public  class LLP_Server {
             clientThread.add(thread);
             thread.start();
         }
-
-
-
     }
 
     private static void printDebug(String statement) {

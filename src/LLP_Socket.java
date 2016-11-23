@@ -16,8 +16,7 @@ public class LLP_Socket {
     private int remoteSeq;
     private int expectedSeqNum;
     //SEND
-    private int receiverWindowSize;
-    private int sendSize;
+    private int rcvWindowSize;
     private int localSeq;
     private int waitingForAck;
     //OTHER
@@ -29,7 +28,6 @@ public class LLP_Socket {
     public LLP_Socket(boolean debug) throws IllegalArgumentException {
        this(-1, null, debug);
     }
-
 
     public LLP_Socket(int localPort, boolean debug) throws IllegalArgumentException {
        this(localPort, null, debug);
@@ -73,7 +71,6 @@ public class LLP_Socket {
             }
         }
         this.debug = debug;
-        sendSize = 0;
         myWindowSize = 50; // default window size, unless initialized by the application
         localSeq = 0;
         waitingForAck = 0;
@@ -115,7 +112,12 @@ public class LLP_Socket {
             System.out.println("SENDING ACK TO SERVER");
             ensureSend(ackPacket);
         } while (!timeoutRcv("SYN_ACK", synPacket));
+
+        LLP_Packet synReceive = LLP_Packet.parsePacket(synPacket.getData());
         // TODO: update seq numbers
+
+        // Set the receive window
+        setRcvWindowSize(synReceive.getWindowSize());
 
         setDestAddress(address);
         setDestPort(port);
@@ -142,6 +144,9 @@ public class LLP_Socket {
         LLP_Packet receiveSYNLLP = LLP_Packet.parsePacket(receiveSYN.getData());
         remoteSeq = receiveSYNLLP.getSeqNum();
 
+        // Set window size for other end
+        setRcvWindowSize(receiveSYNLLP.getWindowSize());
+
         LLP_Packet synAckPacketLLP = new LLP_Packet(localSeq, expectedSeqNum, 0, myWindowSize); // TODO: compute window size
         synAckPacketLLP.setACKFlag(true);
         synAckPacketLLP.setSYNFlag(true);
@@ -156,6 +161,7 @@ public class LLP_Socket {
             // Receive ACK
             printDebug("Receive ACK from Client.");
         }
+
         System.out.println("CONNECTION ACCEPTED");
         LLP_Socket retSocket = new LLP_Socket(socket.getLocalPort(), socket.getLocalAddress(), receiveSYN.getSocketAddress(), debug);
         // TODO: parse ACK and Seq Number
@@ -228,6 +234,9 @@ public class LLP_Socket {
         LLP_Packet receivedLLP = LLP_Packet.parsePacket(receiveData);
 
         System.out.println("Received: " + new String(receiveData));
+        // Update window size
+        setRcvWindowSize(receivedLLP.getWindowSize());
+
         if (whichFlag(receivedLLP).equals("FIN")) {
             recvdClose(receivePacket);
             //TODO: Return something else?
@@ -272,16 +281,13 @@ public class LLP_Socket {
         int startSeqNum = this.localSeq;
         int lastNumPackets = ((int) Math.ceil((double) fileBuff.length / MAX_DATA_SIZE));
         System.out.println("LOCAL SEQ NUM " + this.localSeq);
-        // Seq Num of Last Sent Packet
-//        this.localSeq = 0;
-
 
         // Map to store unAcknowledged packets
         Map<Integer, DatagramPacket> sentPackets = new HashMap<>();
 
         // While window not full and there is more data to send:
         while(true) {
-            while (this.localSeq - waitingForAck < myWindowSize && this.localSeq < lastNumPackets+startSeqNum) {
+            while (this.localSeq - waitingForAck < rcvWindowSize && this.localSeq < lastNumPackets+startSeqNum) {
 
                 // Store packet data to send
                 byte[] sendPacketBytes = null;
@@ -502,6 +508,11 @@ public class LLP_Socket {
         }
         return isTimedout;
 
+    }
+
+    public void setRcvWindowSize(int rcvWindowSize) {
+        printDebug("RECEIVE WINDOW SIZE SET TO: " + rcvWindowSize);
+        this.rcvWindowSize = rcvWindowSize;
     }
 
     //TODO: DELETE METHODS BELOW

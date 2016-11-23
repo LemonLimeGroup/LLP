@@ -33,7 +33,16 @@ public class LLP_Client {
         socket.connect(ipAddress, port);
     }
 
+    public void setWindowSize(int windowSize) {
+        socket.setMyWindowSize(windowSize);
+    }
+
     public void get(String fileloc){
+        if (fileloc == null) {
+            printDebug("File cannot be null.");
+            return;
+        }
+
         byte[] filelocBytes = fileloc.getBytes();
         byte[] getByte = {0};
         byte[] getFile = new byte[fileloc.getBytes().length + 1]; // [1, .. filename ..]
@@ -206,6 +215,9 @@ public class LLP_Client {
                     case "disconnect":
                         client.disconnect();
                         exit = true;
+                        break;
+                    case "window":
+                        client.setWindowSize(sc.nextInt());
                         break;
                     default:
                         System.out.println("Command not recognized.");
