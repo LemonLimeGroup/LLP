@@ -33,7 +33,13 @@ public class LLP_Client {
     }
 
     public void get(String fileloc){
-        socket.send(fileloc.getBytes());
+        byte[] filelocBytes = fileloc.getBytes();
+        byte[] getByte = {0};
+        byte[] getFile = new byte[fileloc.getBytes().length + 1]; // [1, .. filename ..]
+        System.arraycopy(getByte, 0, getFile, 0, getByte.length);
+        System.arraycopy(filelocBytes, 0, getFile, getByte.length, filelocBytes.length);
+
+        socket.send(getFile);
         FileOutputStream out = null;
 
         // Receive file
@@ -107,8 +113,15 @@ public class LLP_Client {
             socket.send("filenotfound".getBytes());
             return;
         }
+
+        byte[] filelocBytes = fileloc.getBytes();
+        byte[] getByte = {1};
+        byte[] postFile = new byte[fileloc.getBytes().length + 1]; // [1, .. filename ..]
+        System.arraycopy(getByte, 0, postFile, 0, getByte.length);
+        System.arraycopy(filelocBytes, 0, postFile, getByte.length, filelocBytes.length);
+
         // Notify server of post
-        socket.send("post".getBytes());
+        socket.send(postFile);
 
         bis = new BufferedInputStream(fis);
         try {

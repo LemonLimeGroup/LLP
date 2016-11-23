@@ -57,11 +57,13 @@ public  class LLP_Server {
                     return;
                 }
 
-                if (Arrays.equals(bytes, "post".getBytes())) { // POST
+                if (bytes[0] == 1) { // POST
                     System.out.println("POOOOOOOOSSTTTTTT");
                     FileOutputStream out = null;
 
-                    String fileloc = new String("randomString.txt");
+                    // Parse Filename
+                    byte[] fileLocBytes = Arrays.copyOfRange(bytes, 1, bytes.length);
+                    String fileloc = new String(fileLocBytes);
                     System.out.println("RECEIVED FILENAME " + fileloc);
 
                     // Receive file
@@ -125,7 +127,8 @@ public  class LLP_Server {
                         e.printStackTrace();
                     }
                 } else { // GET
-                    String filename = new String(bytes);
+                    byte[] fileLocBytes = Arrays.copyOfRange(bytes, 1, bytes.length);
+                    String filename = new String(fileLocBytes);
                     System.out.println(filename);
 
                     File file = new File(filename);
