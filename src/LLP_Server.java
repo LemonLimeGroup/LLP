@@ -1,7 +1,9 @@
-import javax.xml.soap.SOAPPart;
 import java.io.*;
+<<<<<<< HEAD
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
+=======
+>>>>>>> c0f5166bc49e380c44efce7f458f286a92564f90
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -29,7 +31,7 @@ public  class LLP_Server {
     }
 
     public static void window(LLP_Socket socket, int num) {
-        socket.setWindowSize(num);
+        socket.setMyWindowSize(num);
     }
     private static class LLPThread extends Thread {
         private FileInputStream fis;
@@ -60,28 +62,100 @@ public  class LLP_Server {
                     clients.remove(conn);
                     return;
                 }
-                String filename = new String(bytes);
-                System.out.println(filename);
 
-                File file = new File(filename);
-                byte[] mybytearray = new byte[(int) file.length() + 1];
-                try {
-                    fis = new FileInputStream(file);
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                }
+                if (bytes[0] == 1) { // POST
+                    FileOutputStream out = null;
 
-                bis = new BufferedInputStream(fis);
-                try {
-                    bis.read(mybytearray, 0, mybytearray.length);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                mybytearray[mybytearray.length - 1] = 4;
-                try {
-                    conn.send(mybytearray);
-                } catch (SocketException e) {
-                    System.out.println("Send Failed.");
+                    // Parse Filename
+                    byte[] fileLocBytes = Arrays.copyOfRange(bytes, 1, bytes.length);
+                    String fileloc = new String(fileLocBytes);
+                    System.out.println("RECEIVED FILENAME " + fileloc);
+
+                    // Receive file
+                    try {
+                        out = new FileOutputStream("downloaded_" + fileloc);
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    }
+
+                    boolean eof = false;
+
+                    while (!eof) {
+                        byte[] buff = conn.receive(1024);
+                        if (buff != null && buff.length > 0) { // since receive may return null
+                            try {
+                                if (buff[buff.length - 1] == 4
+                                        && buff[buff.length - 2] == 'F'
+                                        && buff[buff.length - 3] == 'O'
+                                        && buff[buff.length - 4] == 'E') {
+                                    out.write(buff, 0, buff.length - 4);
+                                    conn.setTimeout(true);
+                                } else if (Arrays.equals(buff, "timeout".getBytes())) {
+                                    // timeout
+                                    printDebug("Timeout");
+                                    System.out.println("FILE DOWNLOAD COMPLETE");
+                                    eof = true;
+                                } else {
+                                    out.write(buff, 0, buff.length);
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                        } else if (buff == null) {
+                            printDebug("Server closed.");
+                            try {
+                                out.close();
+                                new File("downloaded_" + fileloc).delete();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            System.exit(0);
+                        } else {
+                            //empty array
+                            printDebug("Discarded packets");
+                        }
+                    }
+                    conn.setTimeout(false);
+                    try {
+                        out.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                } else { // GET
+                    byte[] fileLocBytes = Arrays.copyOfRange(bytes, 1, bytes.length);
+                    String filename = new String(fileLocBytes);
+                    System.out.println(filename);
+
+                    File file = new File(filename);
+                    byte[] mybytearray = new byte[(int) file.length() + 4];
+                    try {
+                        fis = new FileInputStream(file);
+                    } catch (FileNotFoundException e) {
+                        try {
+                            conn.send("filenotfound".getBytes());
+                        } catch (SocketException e) {
+                            printDebug("Failed to catch");
+                        }
+                        continue;
+                    }
+                    bis = new BufferedInputStream(fis);
+                    try {
+                        bis.read(mybytearray, 0, mybytearray.length);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    mybytearray[mybytearray.length - 1] = 4;
+                    mybytearray[mybytearray.length - 2] = 'F';
+                    mybytearray[mybytearray.length - 3] = 'O';
+                    mybytearray[mybytearray.length - 4] = 'E';
+
+                    try {
+                        conn.send(mybytearray);
+                    } catch (SocketException e) {
+                        System.out.println("Send Failed.");
+                    }
                 }
             }
         }

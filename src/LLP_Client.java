@@ -33,7 +33,13 @@ public class LLP_Client {
         socket.connect(ipAddress, port);
     }
 
-    public void get(String fileloc) {
+    public void get(String fileloc){
+        byte[] filelocBytes = fileloc.getBytes();
+        byte[] getByte = {0};
+        byte[] getFile = new byte[fileloc.getBytes().length + 1]; // [1, .. filename ..]
+        System.arraycopy(getByte, 0, getFile, 0, getByte.length);
+        System.arraycopy(filelocBytes, 0, getFile, getByte.length, filelocBytes.length);
+
         try {
             socket.send(fileloc.getBytes());
         } catch (SocketException e) {
@@ -54,12 +60,21 @@ public class LLP_Client {
             byte[] buff = socket.receive(1024);
             if (buff != null && buff.length > 0) { // since receive may return null
                 try {
-                    if (buff[buff.length - 1] == 4) {
-                        out.write(buff, 0, buff.length - 1);
+                    if (buff[buff.length - 1] == 4
+                            && buff[buff.length - 2] == 'F'
+                            && buff[buff.length - 3] == 'O'
+                            && buff[buff.length - 4] == 'E') {
+                        out.write(buff, 0, buff.length - 4);
                         socket.setTimeout(true);
                     } else if (Arrays.equals(buff, "timeout".getBytes())) {
                         // timeout
                         printDebug("Timeout");
+                        System.out.println("FILE DOWNLOAD COMPLETE");
+                        eof = true;
+                    } else if (Arrays.equals(buff, "filenotfound".getBytes())){
+                        System.out.println("This file does not exist. Please try another file.");
+                        out.close();
+                        new File("downloaded_" + fileloc).delete();
                         eof = true;
                     } else {
                         out.write(buff, 0, buff.length);
@@ -83,7 +98,6 @@ public class LLP_Client {
                 printDebug("Discarded packets");
             }
         }
-        System.out.println("FILE DOWNLOAD COMPLETE");
         socket.setTimeout(false);
         try {
             out.close();
@@ -94,7 +108,39 @@ public class LLP_Client {
     }
 
     public void post(String fileloc){
-        // extra credit
+        FileInputStream fis;
+        BufferedInputStream bis;
+
+        File file = new File(fileloc);
+        byte[] mybytearray = new byte[(int) file.length() + 4];
+        try {
+            fis = new FileInputStream(file);
+        } catch (FileNotFoundException e) {
+            socket.send("filenotfound".getBytes());
+            return;
+        }
+
+        byte[] filelocBytes = fileloc.getBytes();
+        byte[] getByte = {1};
+        byte[] postFile = new byte[fileloc.getBytes().length + 1]; // [1, .. filename ..]
+        System.arraycopy(getByte, 0, postFile, 0, getByte.length);
+        System.arraycopy(filelocBytes, 0, postFile, getByte.length, filelocBytes.length);
+
+        // Notify server of post
+        socket.send(postFile);
+
+        bis = new BufferedInputStream(fis);
+        try {
+            bis.read(mybytearray, 0, mybytearray.length);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        mybytearray[mybytearray.length - 1] = 4;
+        mybytearray[mybytearray.length - 2] = 'F';
+        mybytearray[mybytearray.length - 3] = 'O';
+        mybytearray[mybytearray.length - 4] = 'E';
+
+        socket.send(mybytearray);
     }
 
     public void disconnect() {
