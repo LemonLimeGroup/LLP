@@ -50,7 +50,7 @@ public class LLP_Client {
         System.arraycopy(filelocBytes, 0, getFile, getByte.length, filelocBytes.length);
 
         try {
-            socket.send(fileloc.getBytes());
+            socket.send(getFile);
         } catch (SocketException e) {
             System.out.println(e.getMessage());
             System.exit(0);
@@ -125,7 +125,11 @@ public class LLP_Client {
         try {
             fis = new FileInputStream(file);
         } catch (FileNotFoundException e) {
-            socket.send("filenotfound".getBytes());
+            try {
+                socket.send("filenotfound".getBytes());
+            } catch (SocketException e1) {
+                e1.printStackTrace();
+            }
             return;
         }
 
@@ -136,7 +140,11 @@ public class LLP_Client {
         System.arraycopy(filelocBytes, 0, postFile, getByte.length, filelocBytes.length);
 
         // Notify server of post
-        socket.send(postFile);
+        try {
+            socket.send(postFile);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
 
         bis = new BufferedInputStream(fis);
         try {
@@ -149,7 +157,11 @@ public class LLP_Client {
         mybytearray[mybytearray.length - 3] = 'O';
         mybytearray[mybytearray.length - 4] = 'E';
 
-        socket.send(mybytearray);
+        try {
+            socket.send(mybytearray);
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
     }
 
     public void disconnect() {
