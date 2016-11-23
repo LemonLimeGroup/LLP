@@ -37,6 +37,11 @@ public class LLP_Client {
     }
 
     public void get(String fileloc){
+        if (fileloc == null) {
+            printDebug("File cannot be null.");
+            return;
+        }
+
         byte[] filelocBytes = fileloc.getBytes();
         byte[] getByte = {0};
         byte[] getFile = new byte[fileloc.getBytes().length + 1]; // [1, .. filename ..]

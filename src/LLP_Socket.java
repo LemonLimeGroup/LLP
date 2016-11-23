@@ -143,6 +143,8 @@ public class LLP_Socket {
         }
         LLP_Packet receiveSYNLLP = LLP_Packet.parsePacket(receiveSYN.getData());
         remoteSeq = receiveSYNLLP.getSeqNum();
+
+        // Set window size for other end
         setRcvWindowSize(receiveSYNLLP.getWindowSize());
 
         LLP_Packet synAckPacketLLP = new LLP_Packet(localSeq, expectedSeqNum, 0, myWindowSize); // TODO: compute window size
@@ -231,6 +233,9 @@ public class LLP_Socket {
         System.arraycopy(rawReceiveData, 0, receiveData, 0, receiveData.length);
         LLP_Packet receivedLLP = LLP_Packet.parsePacket(receiveData);
 
+        // Update window size
+        setRcvWindowSize(receivedLLP.getWindowSize());
+
         if (receivedLLP.getFINFlag() == 1) {
             recvdClose(receivePacket);
             //TODO: Return something else?
@@ -275,16 +280,13 @@ public class LLP_Socket {
         int startSeqNum = this.localSeq;
         int lastNumPackets = ((int) Math.ceil((double) fileBuff.length / MAX_DATA_SIZE));
         System.out.println("LOCAL SEQ NUM " + this.localSeq);
-        // Seq Num of Last Sent Packet
-//        this.localSeq = 0;
-
 
         // Map to store unAcknowledged packets
         Map<Integer, DatagramPacket> sentPackets = new HashMap<>();
 
         // While window not full and there is more data to send:
         while(true) {
-            while (this.localSeq - waitingForAck < myWindowSize && this.localSeq < lastNumPackets+startSeqNum) {
+            while (this.localSeq - waitingForAck < rcvWindowSize && this.localSeq < lastNumPackets+startSeqNum) {
 
                 // Store packet data to send
                 byte[] sendPacketBytes = null;

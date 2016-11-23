@@ -25,6 +25,7 @@ public  class LLP_Server {
     }
 
     public static void window(LLP_Socket socket, int num) {
+        System.out.println("setting window size");
         socket.setMyWindowSize(num);
     }
     private static class LLPThread extends Thread {
@@ -56,7 +57,6 @@ public  class LLP_Server {
                 }
 
                 if (bytes[0] == 1) { // POST
-                    System.out.println("POOOOOOOOSSTTTTTT");
                     FileOutputStream out = null;
 
                     // Parse Filename
@@ -68,11 +68,8 @@ public  class LLP_Server {
                     try {
                         out = new FileOutputStream("downloaded_" + fileloc);
                     } catch (FileNotFoundException e) {
-                        conn.send("notgood".getBytes());
                         e.printStackTrace();
                     }
-
-//                    conn.send("ready".getBytes());
 
                     boolean eof = false;
 
@@ -168,8 +165,9 @@ public  class LLP_Server {
             clients = LLPThread.getClients();
             switch (input) {
                 case "window":
+                    int windowSz = sc.nextInt();
                     for (int iClient = 0; iClient < clients.size(); iClient++) {
-                        window(clients.get(iClient), Integer.parseInt(sc.next()));
+                        window(clients.get(iClient), windowSz);
                     }
                     break;
                 case "terminate":
@@ -216,9 +214,6 @@ public  class LLP_Server {
             System.out.println("New thread");
             thread.start();
         }
-
-
-
     }
 
     private static void printDebug(String statement) {
