@@ -16,8 +16,7 @@ public class LLP_Socket {
     private int remoteSeq;
     private int expectedSeqNum;
     //SEND
-    private int receiverWindowSize;
-    private int sendSize;
+    private int rcvWindowSize;
     private int localSeq;
     private int waitingForAck;
     //OTHER
@@ -73,7 +72,6 @@ public class LLP_Socket {
             }
         }
         this.debug = debug;
-        sendSize = 0;
         myWindowSize = 50; // default window size, unless initialized by the application
         localSeq = 0;
         waitingForAck = 0;
@@ -115,7 +113,12 @@ public class LLP_Socket {
             System.out.println("SENDING ACK TO SERVER");
             ensureSend(ackPacket);
         } while (!timeoutRcv("SYN_ACK", synPacket));
+
+        LLP_Packet synReceive = LLP_Packet.parsePacket(synPacket.getData());
         // TODO: update seq numbers
+        int windowTemp = synReceive.getWindowSize();
+        System.out.println("WINDOW " + windowTemp);
+        setRcvWindowSize(windowTemp);
 
         setDestAddress(address);
         setDestPort(port);
@@ -498,6 +501,10 @@ public class LLP_Socket {
         }
         return isTimedout;
 
+    }
+
+    public void setRcvWindowSize(int rcvWindowSize) {
+        this.rcvWindowSize = this.rcvWindowSize;
     }
 
     //TODO: DELETE METHODS BELOW

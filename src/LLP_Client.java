@@ -32,6 +32,11 @@ public class LLP_Client {
         socket.connect(ipAddress, port);
     }
 
+    public void setWindowSize(int windowSize) {
+        socket.setMyWindowSize(windowSize);
+        printDebug("Client Window Size Updated To: " + windowSize);
+    }
+
     public void get(String fileloc){
         byte[] filelocBytes = fileloc.getBytes();
         byte[] getByte = {0};
@@ -200,6 +205,9 @@ public class LLP_Client {
                     case "disconnect":
                         client.disconnect();
                         exit = true;
+                        break;
+                    case "window":
+                        client.setWindowSize(sc.nextInt());
                         break;
                     default:
                         System.out.println("Command not recognized.");
