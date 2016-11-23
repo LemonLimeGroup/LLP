@@ -31,6 +31,7 @@ public  class LLP_Server {
     }
 
     public static void window(LLP_Socket socket, int num) {
+        printDebug("Setting window size to: " + num);
         socket.setMyWindowSize(num);
     }
     private static class LLPThread extends Thread {
@@ -56,8 +57,7 @@ public  class LLP_Server {
         }
         public void run() {
             while (!terminate) {
-                System.out.println("In thread yay!");
-                System.out.println("is closed? " + conn.isClosed());
+                printDebug("In thread yay!");
                 byte[] bytes = conn.receive(1024);
                 if (terminate || bytes == null) {
                     clients.remove(conn);
@@ -70,7 +70,7 @@ public  class LLP_Server {
                     // Parse Filename
                     byte[] fileLocBytes = Arrays.copyOfRange(bytes, 1, bytes.length);
                     String fileloc = new String(fileLocBytes);
-                    System.out.println("RECEIVED FILENAME " + fileloc);
+                    printDebug("RECEIVED FILENAME " + fileloc);
 
                     // Receive file
                     try {
@@ -223,13 +223,10 @@ public  class LLP_Server {
             LLP_Socket conn = serverSocket.accept();
             //TODO: Multithreading
             Thread thread = new LLPThread(conn);
-            System.out.println("New thread");
+            printDebug("New thread");
             clientThread.add(thread);
             thread.start();
         }
-
-
-
     }
 
     private static void printDebug(String statement) {

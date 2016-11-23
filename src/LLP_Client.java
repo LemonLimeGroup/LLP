@@ -33,7 +33,16 @@ public class LLP_Client {
         socket.connect(ipAddress, port);
     }
 
+    public void setWindowSize(int windowSize) {
+        socket.setMyWindowSize(windowSize);
+    }
+
     public void get(String fileloc){
+        if (fileloc == null) {
+            printDebug("File cannot be null.");
+            return;
+        }
+
         byte[] filelocBytes = fileloc.getBytes();
         byte[] getByte = {0};
         byte[] getFile = new byte[fileloc.getBytes().length + 1]; // [1, .. filename ..]
@@ -41,7 +50,7 @@ public class LLP_Client {
         System.arraycopy(filelocBytes, 0, getFile, getByte.length, filelocBytes.length);
 
         try {
-            socket.send(fileloc.getBytes());
+            socket.send(getFile);
         } catch (SocketException e) {
             System.out.println(e.getMessage());
             System.exit(0);
@@ -135,6 +144,7 @@ public class LLP_Client {
             socket.send(postFile);
         } catch (SocketException e) {
             printDebug("Posting failed.");
+            e.printStackTrace();
         }
 
         bis = new BufferedInputStream(fis);
@@ -152,6 +162,7 @@ public class LLP_Client {
             socket.send(mybytearray);
         } catch (SocketException e) {
             printDebug("Sending failed.");
+            e.printStackTrace();
         }
     }
 
@@ -218,6 +229,9 @@ public class LLP_Client {
                     case "disconnect":
                         client.disconnect();
                         exit = true;
+                        break;
+                    case "window":
+                        client.setWindowSize(sc.nextInt());
                         break;
                     default:
                         System.out.println("Command not recognized.");
