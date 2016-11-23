@@ -1,6 +1,4 @@
-import javax.xml.soap.SOAPPart;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -27,7 +25,7 @@ public  class LLP_Server {
     }
 
     public static void window(LLP_Socket socket, int num) {
-        socket.setWindowSize(num);
+        socket.setMyWindowSize(num);
     }
     private static class LLPThread extends Thread {
         private FileInputStream fis;
