@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Scanner;
@@ -32,8 +33,13 @@ public class LLP_Client {
         socket.connect(ipAddress, port);
     }
 
-    public void get(String fileloc){
-        socket.send(fileloc.getBytes());
+    public void get(String fileloc) {
+        try {
+            socket.send(fileloc.getBytes());
+        } catch (SocketException e) {
+            System.out.println(e.getMessage());
+            System.exit(0);
+        }
         FileOutputStream out = null;
 
         // Receive file
@@ -135,11 +141,11 @@ public class LLP_Client {
                 switch (input) {
                     case "connect":
                         client.connect();
+                        isConnected = true;
                         break;
                     default:
                         System.out.println("Command not recognized.");
                 }
-                isConnected = true;
             } else {
                 switch (input) {
                     case "post":

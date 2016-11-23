@@ -1,5 +1,6 @@
 import javax.xml.soap.SOAPPart;
 import java.io.*;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,6 +11,7 @@ import java.util.Scanner;
  */
 public  class LLP_Server {
     private static boolean debug = false;
+    private static ArrayList<Thread> clientThread = new ArrayList<>();
 
     public static void terminate(LLP_Socket socket) {
         ArrayList<LLP_Socket> clientList =LLPThread.getClients();
@@ -34,12 +36,14 @@ public  class LLP_Server {
         private BufferedInputStream bis;
         private LLP_Socket conn;
         private static ArrayList<LLP_Socket> clients = new ArrayList<>();
+        private boolean terminate;
 
         public LLPThread(LLP_Socket conn) {
             super();
             fis = null;
             bis = null;
             this.conn = conn;
+            terminate = false;
             clients.add(conn);
         }
 
@@ -47,7 +51,7 @@ public  class LLP_Server {
             return clients;
         }
         public void run() {
-            while (true) {
+            while (!terminate) {
                 System.out.println("In thread yay!");
                 System.out.println("is closed? " + conn.isClosed());
                 byte[] bytes = conn.receive(1024);
@@ -74,8 +78,18 @@ public  class LLP_Server {
                     e.printStackTrace();
                 }
                 mybytearray[mybytearray.length - 1] = 4;
-                conn.send(mybytearray);
+                try {
+                    conn.send(mybytearray);
+                } catch (SocketException e) {
+                    System.out.println("Send Failed.");
+                }
             }
+        }
+        public LLP_Socket getConnSocket() {
+            return conn;
+        }
+        public void setTerminate() {
+            terminate = true;
         }
     }
 
@@ -139,6 +153,7 @@ public  class LLP_Server {
             //TODO: Multithreading
             Thread thread = new LLPThread(conn);
             System.out.println("New thread");
+            clientThread.add(thread);
             thread.start();
         }
 

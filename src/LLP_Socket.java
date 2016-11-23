@@ -247,7 +247,8 @@ public class LLP_Socket {
         System.arraycopy(rawReceiveData, 0, receiveData, 0, receiveData.length);
         LLP_Packet receivedLLP = LLP_Packet.parsePacket(receiveData);
 
-        if (receivedLLP.getFINFlag() == 1) {
+        System.out.println("Received: " + new String(receiveData));
+        if (whichFlag(receivedLLP).equals("FIN")) {
             recvdClose(receivePacket);
             //TODO: Return something else?
             return null;
@@ -281,7 +282,7 @@ public class LLP_Socket {
         }
     }
 
-    public void send(byte[] data) {
+    public void send(byte[] data) throws SocketException {
         // Data to be sent
         byte[] fileBuff = data;
 
@@ -343,7 +344,8 @@ public class LLP_Socket {
             } else {
                 printDebug("packet received: " + new String(ackPacket.getData()));
                 LLP_Packet ackLLP = LLP_Packet.parsePacket(ackPacket.getData());
-                if (whichFlag(ackLLP).equals("ACK")) {
+                String flag = whichFlag(ackLLP);
+                if (flag.equals("ACK")) {
                     System.out.println("RECEIVED ACK: " + ackLLP.getAckNum());
                     System.out.println("LAST SEQ NUM " + lastNumPackets);
                     waitingForAck = Math.max(waitingForAck, ackLLP.getAckNum());
@@ -352,7 +354,9 @@ public class LLP_Socket {
                         System.out.println("EXITING");
                         return;
                     }
-                } else {
+                } else if (flag.equals("FIN")){
+                    System.out.println("hello");
+                    throw new SocketException("Server closed.");
                     // TODO: Handle this case
                 }
             }
