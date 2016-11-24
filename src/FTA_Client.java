@@ -3,22 +3,23 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.InputMismatchException;
 import java.util.Scanner;
 
 /**
  * Created by Sally, Yami on 11/12/16.
  */
-public class LLP_Client {
+public class FTA_Client {
     LLP_Socket socket;
     private InetAddress ipAddress;
     private int port;
     boolean debug;
 
-    public LLP_Client(){
+    public FTA_Client(){
         this(null, 0);
     }
 
-    public LLP_Client(InetAddress ipAddress, int port) {
+    public FTA_Client(InetAddress ipAddress, int port) {
         this.ipAddress = ipAddress;
         this.port = port;
         debug = false;
@@ -34,6 +35,7 @@ public class LLP_Client {
     }
 
     public void setWindowSize(int windowSize) {
+        System.out.println("=== Window size set to: " + windowSize + " ===");
         socket.setMyWindowSize(windowSize);
     }
 
@@ -65,6 +67,7 @@ public class LLP_Client {
         }
         boolean eof = false;
 
+        System.out.println("=== Downloading File... ===");
         while (!eof) {
             byte[] buff = socket.receive(1024);
             if (buff != null && buff.length > 0) { // since receive may return null
@@ -78,7 +81,7 @@ public class LLP_Client {
                     } else if (Arrays.equals(buff, "timeout".getBytes())) {
                         // timeout
                         printDebug("Timeout");
-                        System.out.println("FILE DOWNLOAD COMPLETE");
+                        System.out.println("=== FILE DOWNLOAD COMPLETE ===");
                         eof = true;
                     } else if (Arrays.equals(buff, "filenotfound".getBytes())){
                         System.out.println("This file does not exist. Please try another file.");
@@ -127,8 +130,8 @@ public class LLP_Client {
         } catch (FileNotFoundException e) {
             try {
                 socket.send("filenotfound".getBytes());
-            } catch (SocketException timeOut) {
-                printDebug("Sending 'filenotfound' failed.");
+            } catch (SocketException e1) {
+                e1.printStackTrace();
             }
             return;
         }
@@ -143,7 +146,6 @@ public class LLP_Client {
         try {
             socket.send(postFile);
         } catch (SocketException e) {
-            printDebug("Posting failed.");
             e.printStackTrace();
         }
 
@@ -161,7 +163,6 @@ public class LLP_Client {
         try {
             socket.send(mybytearray);
         } catch (SocketException e) {
-            printDebug("Sending failed.");
             e.printStackTrace();
         }
     }
@@ -181,10 +182,10 @@ public class LLP_Client {
             System.exit(-1);
         }
         //parse command line args
-        LLP_Client client = new LLP_Client();
+        FTA_Client client = new FTA_Client();
 
         try{
-            client = new LLP_Client(InetAddress.getByName(args[0]), Integer.parseInt(args[1]));
+            client = new FTA_Client(InetAddress.getByName(args[0]), Integer.parseInt(args[1]));
         } catch (UnknownHostException e){
             System.err.println("Caught UnknownHostException " + e.getMessage());
             System.exit(-1);
@@ -203,12 +204,14 @@ public class LLP_Client {
 
         boolean exit = false;
         boolean isConnected = false;
+        System.out.println("=== Ready to connect. ===");
         while(!exit) {
             Scanner sc = new Scanner(System.in);
             String input = sc.next().toLowerCase();
             if (!isConnected) {
                 switch (input) {
                     case "connect":
+                        System.out.println("=== Connecting... ===");
                         client.connect();
                         isConnected = true;
                         break;
@@ -231,8 +234,18 @@ public class LLP_Client {
                         exit = true;
                         break;
                     case "window":
-                        client.setWindowSize(sc.nextInt());
-                        break;
+                        try {
+                            int window = sc.nextInt();
+                            if (window <= 0) {
+                                System.out.println("Window size must be a positive integer.");
+                                break;
+                            }
+                            client.setWindowSize(window);
+                            break;
+                        } catch(InputMismatchException e) {
+                            System.out.println("Not a valid window size. Window size must be an integer.");
+                            break;
+                        }
                     default:
                         System.out.println("Command not recognized.");
                 }

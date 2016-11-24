@@ -91,7 +91,6 @@ public class LLP_Packet {
         }
 
         if (getData() != null) {
-            System.out.println("GET DATA LENGTH " + getData().length);
             for (int i = 0; i < data.length; i++) {
                 bitString += String.format("%8s", Integer.toBinaryString(data[i] & 0xFF)).replace(' ', '0');
             }
@@ -153,7 +152,6 @@ public class LLP_Packet {
         bitString += String.format("%10s", Integer.toBinaryString(windowSize)).replace(' ', '0');
 
         if (getData() != null) {
-            System.out.println("GET DATA LENGTH " + getData().length);
             for (int i = 0; i < data.length; i++) {
                 bitString += String.format("%8s", Integer.toBinaryString(data[i] & 0xFF)).replace(' ', '0');
             }
@@ -310,23 +308,5 @@ public class LLP_Packet {
             System.arraycopy(data, 0, combinedHeaderAndData, header.length, data.length);
             return combinedHeaderAndData;
         }
-    }
-
-    //DELETE
-    public static void main(String[] args) {
-        LLP_Packet test = new LLP_Packet(2,13241,0,234);
-        byte[] bytes = test.getHeader();
-        System.out.println("ORIGINAL PACKET: WINDOW " + test.getWindowSize()
-                + " ACK " + test.getAckNum()
-                + " SEQ " + test.getSeqNum());
-
-        LLP_Packet testParsedPacket = LLP_Packet.parsePacket(bytes);
-        System.out.println("RECEIVED PACKET: WINDOW " + testParsedPacket.getWindowSize()
-                + " ACK " + testParsedPacket.getAckNum()
-                + " SEQ " + testParsedPacket.getSeqNum());
-
-
-        System.out.println("IS VALID CHECKSUM: " + test.isValidChecksum());
-        System.out.println("Hello World!"); // Display the string.
     }
 }

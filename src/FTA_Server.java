@@ -2,12 +2,13 @@ import java.io.*;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.InputMismatchException;
 import java.util.Scanner;
 
 /**
  * Created by Sally, Yami on 11/9/16.
  */
-public  class LLP_Server {
+public  class FTA_Server {
     private static boolean debug = false;
     private static ArrayList<Thread> clientThread = new ArrayList<>();
 
@@ -30,7 +31,7 @@ public  class LLP_Server {
     }
 
     public static void window(LLP_Socket socket, int num) {
-        printDebug("Setting window size to: " + num);
+        System.out.println("Setting window size to: " + num);
         socket.setMyWindowSize(num);
     }
     private static class LLPThread extends Thread {
@@ -48,15 +49,13 @@ public  class LLP_Server {
             terminate = false;
             clients.add(conn);
         }
-        public void setTerminate() {
-            terminate = true;
-        }
+
         public static ArrayList<LLP_Socket> getClients() {
             return clients;
         }
         public void run() {
             while (!terminate) {
-                printDebug("In thread yay!");
+                printDebug("=== New Thread Started ===");
                 byte[] bytes = conn.receive(1024);
                 if (terminate || bytes == null || bytes.length < 1) {
                     clients.remove(conn);
@@ -93,8 +92,7 @@ public  class LLP_Server {
                                 } else if (Arrays.equals(buff, "timeout".getBytes())) {
                                     // timeout
                                     printDebug("Timeout");
-                                    System.out.println("FILE DOWNLOAD COMPLETE");
-                                    bytes = null; //TODO DELELTE
+                                    System.out.println("=== FILE DOWNLOAD COMPLETE ===");
                                     eof = true;
                                 } else {
                                     out.write(buff, 0, buff.length);
@@ -136,7 +134,7 @@ public  class LLP_Server {
                     } catch (FileNotFoundException e) {
                         try {
                             conn.send("filenotfound".getBytes());
-                        } catch (SocketException timeOut) {
+                        } catch (SocketException e1) {
                             printDebug("Failed to catch");
                         }
                         continue;
@@ -159,7 +157,12 @@ public  class LLP_Server {
                     }
                 }
             }
-            System.out.println("I have terminated");
+        }
+        public LLP_Socket getConnSocket() {
+            return conn;
+        }
+        public void setTerminate() {
+            terminate = true;
         }
     }
 
@@ -177,11 +180,20 @@ public  class LLP_Server {
             clients = LLPThread.getClients();
             switch (input) {
                 case "window":
-                    int windowSz = sc.nextInt();
-                    for (int iClient = 0; iClient < clients.size(); iClient++) {
-                        window(clients.get(iClient), windowSz);
+                    try {
+                        int windowSz = sc.nextInt();
+                        if (windowSz <= 0) {
+                            System.out.println("Window size must be a positive integer.");
+                            break;
+                        }
+                        for (int iClient = 0; iClient < clients.size(); iClient++) {
+                            window(clients.get(iClient), windowSz);
+                        }
+                        break;
+                    } catch (InputMismatchException e) {
+                        System.out.println("Not a valid window size. Window size must be an integer.");
+                        break;
                     }
-                    break;
                 case "terminate":
                     terminate(serverSocket);
                     break;
