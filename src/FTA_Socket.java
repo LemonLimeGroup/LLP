@@ -7,7 +7,7 @@ import java.util.Map;
 /**
  * Created by Sally, Yami on 11/12/16.
  */
-public class LLP_Socket {
+public class FTA_Socket {
     //FINAL VARIABLES
     private static final int MAX_DATA_SIZE = 1012;
     private static final int TIMER = 500;
@@ -25,18 +25,18 @@ public class LLP_Socket {
     private int destPort;
     boolean debug;
 
-    public LLP_Socket(boolean debug) throws IllegalArgumentException {
+    public FTA_Socket(boolean debug) throws IllegalArgumentException {
        this(-1, null, debug);
     }
 
-    public LLP_Socket(int localPort, boolean debug) throws IllegalArgumentException {
+    public FTA_Socket(int localPort, boolean debug) throws IllegalArgumentException {
        this(localPort, null, debug);
     }
-    public LLP_Socket(int localPort, InetAddress address, boolean debug) {
+    public FTA_Socket(int localPort, InetAddress address, boolean debug) {
         this(localPort, address, null, debug);
     }
 
-    public LLP_Socket(int localPort, InetAddress localAddress, SocketAddress remoteAddress, boolean debug) {
+    public FTA_Socket(int localPort, InetAddress localAddress, SocketAddress remoteAddress, boolean debug) {
         boolean isSuccessful = false;
         try {
             socket = new DatagramSocket(null);
@@ -88,7 +88,7 @@ public class LLP_Socket {
         // Send SYN
         printDebug("SENDING SYN TO SERVER");
         //TODO: checksum?
-        LLP_Packet synPacketLLP = new LLP_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
+        FTA_Packet synPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
         synPacketLLP.setSYNFlag(true);
         byte[] synData = synPacketLLP.toArray();
 
@@ -104,7 +104,7 @@ public class LLP_Socket {
         //TODO: get remote sequence number
 
         // Send ACK
-        LLP_Packet ackPacketLLP = new LLP_Packet(localSeq, expectedSeqNum, 0, myWindowSize); // TODO: compute these values instead of hardcoded
+        FTA_Packet ackPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize); // TODO: compute these values instead of hardcoded
         ackPacketLLP.setACKFlag(true);
         byte[] ackData = ackPacketLLP.toArray();
         DatagramPacket ackPacket = new DatagramPacket(ackData, ackData.length, address, port);
@@ -113,7 +113,7 @@ public class LLP_Socket {
             ensureSend(ackPacket);
         } while (!timeoutRcv("SYN_ACK", synPacket));
 
-        LLP_Packet synReceive = LLP_Packet.parsePacket(synPacket.getData());
+        FTA_Packet synReceive = FTA_Packet.parsePacket(synPacket.getData());
         // TODO: update seq numbers
 
         // Set the receive window
@@ -132,7 +132,7 @@ public class LLP_Socket {
      *
      * @return socket
      */
-    public LLP_Socket accept() {
+    public FTA_Socket accept() {
         // Receive SYN
 
         printDebug("WAITING FOR SYN FROM CLIENT");
@@ -141,13 +141,13 @@ public class LLP_Socket {
         if (receiveSYN == null) {
             printDebug("SYN is null");
         }
-        LLP_Packet receiveSYNLLP = LLP_Packet.parsePacket(receiveSYN.getData());
+        FTA_Packet receiveSYNLLP = FTA_Packet.parsePacket(receiveSYN.getData());
         remoteSeq = receiveSYNLLP.getSeqNum();
 
         // Set window size for other end
         setRcvWindowSize(receiveSYNLLP.getWindowSize());
 
-        LLP_Packet synAckPacketLLP = new LLP_Packet(localSeq, expectedSeqNum, 0, myWindowSize); // TODO: compute window size
+        FTA_Packet synAckPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize); // TODO: compute window size
         synAckPacketLLP.setACKFlag(true);
         synAckPacketLLP.setSYNFlag(true);
         byte[] sendSYNACKData = synAckPacketLLP.toArray();
@@ -163,7 +163,7 @@ public class LLP_Socket {
         }
 
         System.out.println("CONNECTION ACCEPTED");
-        LLP_Socket retSocket = new LLP_Socket(socket.getLocalPort(), socket.getLocalAddress(), receiveSYN.getSocketAddress(), debug);
+        FTA_Socket retSocket = new FTA_Socket(socket.getLocalPort(), socket.getLocalAddress(), receiveSYN.getSocketAddress(), debug);
         // TODO: parse ACK and Seq Number
         return retSocket; // TODO: Not sure what to return -- tcp normally returns connection socket
     }
@@ -174,7 +174,7 @@ public class LLP_Socket {
         // Send FIN
         printDebug("SENDING FIN");
 
-        LLP_Packet finPacketLLP = new LLP_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
+        FTA_Packet finPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
         finPacketLLP.setFINFlag(true);
         byte[] finArray = finPacketLLP.toArray();
 
@@ -188,7 +188,7 @@ public class LLP_Socket {
 
         byte[] trimmedRcvData = new byte[recvPacket.getLength()]; // I think getLength() returns actual packet size received
         System.arraycopy(receiveData, 0, trimmedRcvData, 0, trimmedRcvData.length);
-        LLP_Packet recvPacktLLP = LLP_Packet.parsePacket(trimmedRcvData);
+        FTA_Packet recvPacktLLP = FTA_Packet.parsePacket(trimmedRcvData);
 
         System.out.println("finpacket address:" + finPacket.getSocketAddress());
         if (recvPacktLLP.getACKFlag() == 1) {
@@ -197,14 +197,14 @@ public class LLP_Socket {
             ensureRcvdFlag("FIN", finPacket);
             printDebug("Received FIN. Sending ACK.");
 
-            LLP_Packet ackPacketLLP = new LLP_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
+            FTA_Packet ackPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
             ackPacketLLP.setACKFlag(true);
             byte[] ackArray = ackPacketLLP.toArray();
             DatagramPacket ackPacket = new DatagramPacket(ackArray, finArray.length, socket.getRemoteSocketAddress());
             ensureSend(ackPacket);
         } else if (recvPacktLLP.getFINFlag() == 1) {
             printDebug("FIN received. Sending ACK");
-            LLP_Packet ackPacketLLP = new LLP_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
+            FTA_Packet ackPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
             ackPacketLLP.setACKFlag(true);
             byte[] ackArray = ackPacketLLP.toArray();
             DatagramPacket ackPacket = new DatagramPacket(ackArray, finArray.length, socket.getRemoteSocketAddress());
@@ -231,7 +231,7 @@ public class LLP_Socket {
         // create new byte array without the empty unused buffer
         byte[] receiveData = new byte[receivePacket.getLength()];
         System.arraycopy(rawReceiveData, 0, receiveData, 0, receiveData.length);
-        LLP_Packet receivedLLP = LLP_Packet.parsePacket(receiveData);
+        FTA_Packet receivedLLP = FTA_Packet.parsePacket(receiveData);
 
         printDebug("Received: " + new String(receiveData));
         // Update window size
@@ -247,7 +247,7 @@ public class LLP_Socket {
         if (!receivedLLP.isValidChecksum() || receivedLLP.getSeqNum() != this.expectedSeqNum) {
             printDebug("PACKET DISCARDED: SEQ EXPECTED: " + this.expectedSeqNum + " RECEIVED: " + receivedLLP.getSeqNum());
 
-            LLP_Packet ackPacket = new LLP_Packet(this.localSeq, this.expectedSeqNum, 0, myWindowSize);
+            FTA_Packet ackPacket = new FTA_Packet(this.localSeq, this.expectedSeqNum, 0, myWindowSize);
             ackPacket.setACKFlag(true);
             byte[] sendData = ackPacket.toArray();
 
@@ -257,7 +257,7 @@ public class LLP_Socket {
         } else {
             printDebug("RECEIVED DATA: EXPECTED SEQ: " + this.expectedSeqNum + "RECEIVED SEQ " + receivedLLP.getSeqNum());
 
-            LLP_Packet ackPacket = new LLP_Packet(this.localSeq, ++this.expectedSeqNum, 0, myWindowSize);
+            FTA_Packet ackPacket = new FTA_Packet(this.localSeq, ++this.expectedSeqNum, 0, myWindowSize);
             ackPacket.setACKFlag(true);
             byte[] sendData = ackPacket.toArray();
 
@@ -295,7 +295,7 @@ public class LLP_Socket {
                     sendPacketBytes = Arrays.copyOfRange(fileBuff, startPos, startPos + MAX_DATA_SIZE);
                 }
 
-                LLP_Packet sendPacketLLP = new LLP_Packet(this.localSeq, ++remoteSeq, 0, myWindowSize);
+                FTA_Packet sendPacketLLP = new FTA_Packet(this.localSeq, ++remoteSeq, 0, myWindowSize);
                 sendPacketLLP.setData(sendPacketBytes);
                 byte[] sendData = sendPacketLLP.toArray();
                 DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
@@ -323,7 +323,7 @@ public class LLP_Socket {
                 }
             } else {
                 printDebug("packet received: " + new String(ackPacket.getData()));
-                LLP_Packet ackLLP = LLP_Packet.parsePacket(ackPacket.getData());
+                FTA_Packet ackLLP = FTA_Packet.parsePacket(ackPacket.getData());
                 String flag = whichFlag(ackLLP);
                 if (flag.equals("ACK")) {
                     printDebug("RECEIVED ACK FOR SEQ NUM: " + ackLLP.getAckNum());
@@ -393,7 +393,7 @@ public class LLP_Socket {
         //Received FIN. Sending ACK
         printDebug("Received FIN. Trying to send ACK");
 
-        LLP_Packet sendPacketLLP = new LLP_Packet(localSeq, remoteSeq, 0, myWindowSize);
+        FTA_Packet sendPacketLLP = new FTA_Packet(localSeq, remoteSeq, 0, myWindowSize);
         sendPacketLLP.setACKFlag(1);
         byte[] sendData = sendPacketLLP.toArray();
         DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, socket.getRemoteSocketAddress());
@@ -402,7 +402,7 @@ public class LLP_Socket {
         printDebug("Successfully sent ACK. In CLOSE-WAIT state.");
         printDebug("Sending FIN");
 
-        sendPacketLLP = new LLP_Packet(localSeq, remoteSeq, 0, myWindowSize);
+        sendPacketLLP = new FTA_Packet(localSeq, remoteSeq, 0, myWindowSize);
         sendPacketLLP.setFINFlag(1);
         sendData = sendPacketLLP.toArray();
         sendPacket = new DatagramPacket(sendData, sendData.length, socket.getRemoteSocketAddress());
@@ -416,7 +416,7 @@ public class LLP_Socket {
         socket.close();
     }
 
-    private String whichFlag(LLP_Packet recvPacketLLP) {
+    private String whichFlag(FTA_Packet recvPacketLLP) {
         //In assumption that multiple flags won't be set in the same packet except syn/ack
         if (recvPacketLLP.getACKFlag() == 1 && recvPacketLLP.getSYNFlag() == 1) {
             return "SYN_ACK";
@@ -442,7 +442,7 @@ public class LLP_Socket {
         boolean isFlag = false;
         boolean isFromRightClient = false;
         byte[] trimmedRcvData;
-        LLP_Packet recvPacketLLP;
+        FTA_Packet recvPacketLLP;
         byte[] receiveData = new byte[MAX_DATA_SIZE];
         DatagramPacket recvPacket = new DatagramPacket(receiveData, receiveData.length);
 
@@ -456,7 +456,7 @@ public class LLP_Socket {
 
             trimmedRcvData = new byte[recvPacket.getLength()];
             System.arraycopy(receiveData, 0, trimmedRcvData, 0, trimmedRcvData.length);
-            recvPacketLLP = LLP_Packet.parsePacket(trimmedRcvData);
+            recvPacketLLP = FTA_Packet.parsePacket(trimmedRcvData);
             if (!noTimeout) {
                 return null;
             }

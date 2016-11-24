@@ -7,12 +7,12 @@ import java.util.Scanner;
 /**
  * Created by Sally, Yami on 11/9/16.
  */
-public  class LLP_Server {
+public  class FTA_Server {
     private static boolean debug = false;
     private static ArrayList<Thread> clientThread = new ArrayList<>();
 
-    public static void terminate(LLP_Socket socket) {
-        ArrayList<LLP_Socket> clientList =LLPThread.getClients();
+    public static void terminate(FTA_Socket socket) {
+        ArrayList<FTA_Socket> clientList =LLPThread.getClients();
         //TODO: need to fix client side so that it can receive FIN from server
         for (int iClient = 0; iClient < clientList.size(); iClient++) {
             clientList.remove(iClient).close();
@@ -26,18 +26,18 @@ public  class LLP_Server {
         debug = true;
     }
 
-    public static void window(LLP_Socket socket, int num) {
+    public static void window(FTA_Socket socket, int num) {
         printDebug("Setting window size to: " + num);
         socket.setMyWindowSize(num);
     }
     private static class LLPThread extends Thread {
         private FileInputStream fis;
         private BufferedInputStream bis;
-        private LLP_Socket conn;
-        private static ArrayList<LLP_Socket> clients = new ArrayList<>();
+        private FTA_Socket conn;
+        private static ArrayList<FTA_Socket> clients = new ArrayList<>();
         private boolean terminate;
 
-        public LLPThread(LLP_Socket conn) {
+        public LLPThread(FTA_Socket conn) {
             super();
             fis = null;
             bis = null;
@@ -46,7 +46,7 @@ public  class LLP_Server {
             clients.add(conn);
         }
 
-        public static ArrayList<LLP_Socket> getClients() {
+        public static ArrayList<FTA_Socket> getClients() {
             return clients;
         }
         public void run() {
@@ -155,7 +155,7 @@ public  class LLP_Server {
                 }
             }
         }
-        public LLP_Socket getConnSocket() {
+        public FTA_Socket getConnSocket() {
             return conn;
         }
         public void setTerminate() {
@@ -165,9 +165,9 @@ public  class LLP_Server {
 
     private static class CommandThread extends Thread {
         private Scanner sc;
-        private LLP_Socket serverSocket;
-        private ArrayList<LLP_Socket> clients;
-        public CommandThread(Scanner sc, LLP_Socket serverSocket) {
+        private FTA_Socket serverSocket;
+        private ArrayList<FTA_Socket> clients;
+        public CommandThread(Scanner sc, FTA_Socket serverSocket) {
             super();
             this.sc = sc;
             this.serverSocket = serverSocket;
@@ -214,13 +214,13 @@ public  class LLP_Server {
                 System.exit(-1);
             }
         }
-        LLP_Socket serverSocket = new LLP_Socket(port, debug);
+        FTA_Socket serverSocket = new FTA_Socket(port, debug);
         Scanner sc = new Scanner(System.in);
         Thread command = new CommandThread(sc, serverSocket);
         command.start();
 
         while (true) {
-            LLP_Socket conn = serverSocket.accept();
+            FTA_Socket conn = serverSocket.accept();
             //TODO: Multithreading
             Thread thread = new LLPThread(conn);
             printDebug("New thread");

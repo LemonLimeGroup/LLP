@@ -8,17 +8,17 @@ import java.util.Scanner;
 /**
  * Created by Sally, Yami on 11/12/16.
  */
-public class LLP_Client {
-    LLP_Socket socket;
+public class FTA_Client {
+    FTA_Socket socket;
     private InetAddress ipAddress;
     private int port;
     boolean debug;
 
-    public LLP_Client(){
+    public FTA_Client(){
         this(null, 0);
     }
 
-    public LLP_Client(InetAddress ipAddress, int port) {
+    public FTA_Client(InetAddress ipAddress, int port) {
         this.ipAddress = ipAddress;
         this.port = port;
         debug = false;
@@ -29,7 +29,7 @@ public class LLP_Client {
     }
 
     public void connect() {
-        socket = new LLP_Socket(debug);
+        socket = new FTA_Socket(debug);
         socket.connect(ipAddress, port);
     }
 
@@ -179,10 +179,10 @@ public class LLP_Client {
             System.exit(-1);
         }
         //parse command line args
-        LLP_Client client = new LLP_Client();
+        FTA_Client client = new FTA_Client();
 
         try{
-            client = new LLP_Client(InetAddress.getByName(args[0]), Integer.parseInt(args[1]));
+            client = new FTA_Client(InetAddress.getByName(args[0]), Integer.parseInt(args[1]));
         } catch (UnknownHostException e){
             System.err.println("Caught UnknownHostException " + e.getMessage());
             System.exit(-1);

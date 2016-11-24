@@ -4,7 +4,7 @@ import java.util.Arrays;
 /**
  * Created by Sally on 11/12/16.
  */
-public class LLP_Packet {
+public class FTA_Packet {
 
     private int seqNum;
     private int ackNum;
@@ -18,15 +18,15 @@ public class LLP_Packet {
     private byte[] data;
 
 
-    public LLP_Packet() {
+    public FTA_Packet() {
         this(0, 0, 0, 0, 0, false, false, false, false);
     }
 
-    public LLP_Packet(int seqNum, int ackNum, int checksum, int windowSize) {
+    public FTA_Packet(int seqNum, int ackNum, int checksum, int windowSize) {
         this(seqNum, ackNum, 0, checksum, windowSize, false, false, false, false);
     }
 
-    public LLP_Packet(int seqNum, int ackNum, int dataOffset, int checksum, int windowSize,
+    public FTA_Packet(int seqNum, int ackNum, int dataOffset, int checksum, int windowSize,
                       boolean ACK, boolean RST, boolean SYN, boolean FIN) {
         this.seqNum = seqNum;
         this.ackNum = ackNum;
@@ -65,7 +65,7 @@ public class LLP_Packet {
     }
 
     /**
-     * Computes the checksum for this LLP_Packet and updates the global var for checksum.
+     * Computes the checksum for this FTA_Packet and updates the global var for checksum.
      * Also returns the checksum in string representation.
      *
      * Helper function for createHeader()
@@ -131,7 +131,7 @@ public class LLP_Packet {
     }
 
     /**
-     * Computes the checksum for this LLP_Packet and updates the global var for checksum.
+     * Computes the checksum for this FTA_Packet and updates the global var for checksum.
      * Also returns the checksum in string representation.
      *
      * Helper function for createHeader()
@@ -200,9 +200,9 @@ public class LLP_Packet {
         return createHeader();
     }
 
-    public static LLP_Packet parsePacket(byte[] rawPacket) {
+    public static FTA_Packet parsePacket(byte[] rawPacket) {
         ByteBuffer wrapped = ByteBuffer.wrap(rawPacket); // big-endian by default
-        LLP_Packet packet = new LLP_Packet();
+        FTA_Packet packet = new FTA_Packet();
 
         // Parse Data
         packet.setSeqNum(wrapped.getInt()); // 32-bit seq num
@@ -314,13 +314,13 @@ public class LLP_Packet {
 
     //DELETE
     public static void main(String[] args) {
-        LLP_Packet test = new LLP_Packet(2,13241,0,234);
+        FTA_Packet test = new FTA_Packet(2,13241,0,234);
         byte[] bytes = test.getHeader();
         System.out.println("ORIGINAL PACKET: WINDOW " + test.getWindowSize()
                 + " ACK " + test.getAckNum()
                 + " SEQ " + test.getSeqNum());
 
-        LLP_Packet testParsedPacket = LLP_Packet.parsePacket(bytes);
+        FTA_Packet testParsedPacket = FTA_Packet.parsePacket(bytes);
         System.out.println("RECEIVED PACKET: WINDOW " + testParsedPacket.getWindowSize()
                 + " ACK " + testParsedPacket.getAckNum()
                 + " SEQ " + testParsedPacket.getSeqNum());
