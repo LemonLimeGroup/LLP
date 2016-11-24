@@ -34,6 +34,8 @@ Name & Descriptions of All Files Submitted:
 
             Command: window [max_window_size]
                 - Specifies the maximum receiver's window size for the FTA_Client (in number of segments).
+                - Default window size is 1.
+
 
             Command: disconnect
                 - Terminates the FTA_Client terminates gracefully from the FTA_Server.
@@ -46,6 +48,7 @@ Name & Descriptions of All Files Submitted:
 
             Command: window [max_window_size]
                 - Specifies the maximum receiver's window size for the FTA_Server (in number of segments).
+                - Default window size is 1.
 
             Command: terminate
                 - Shut down the FTA_Server gracefully.
