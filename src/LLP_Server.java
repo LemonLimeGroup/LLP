@@ -15,7 +15,6 @@ public  class LLP_Server {
         ArrayList<LLP_Socket> clientList =LLPThread.getClients();
         //TODO: need to fix client side so that it can receive FIN from server
         for (int iClient = 0; iClient < clientList.size(); iClient++) {
-            System.out.println("I'm inside the for loop");
             ((LLPThread) clientThread.get(iClient)).setTerminate();
         }
         for (int iClient = 0; iClient < clientList.size(); iClient++) {
@@ -59,7 +58,7 @@ public  class LLP_Server {
             while (!terminate) {
                 printDebug("In thread yay!");
                 byte[] bytes = conn.receive(1024);
-                if (terminate || bytes == null) {
+                if (terminate || bytes == null || bytes.length < 1) {
                     clients.remove(conn);
                     return;
                 }
@@ -95,6 +94,7 @@ public  class LLP_Server {
                                     // timeout
                                     printDebug("Timeout");
                                     System.out.println("FILE DOWNLOAD COMPLETE");
+                                    bytes = null; //TODO DELELTE
                                     eof = true;
                                 } else {
                                     out.write(buff, 0, buff.length);
@@ -104,7 +104,7 @@ public  class LLP_Server {
                             }
 
                         } else if (buff == null) {
-                            printDebug("Server closed.");
+                            printDebug("Server closed."); //TODO: think more about this case
                             try {
                                 out.close();
                                 new File("downloaded_" + fileloc).delete();
