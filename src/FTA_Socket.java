@@ -1,0 +1,529 @@
+import java.io.IOException;
+import java.net.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Created by Sally, Yami on 11/12/16.
+ */
+public class FTA_Socket {
+    //FINAL VARIABLES
+    private static final int MAX_DATA_SIZE = 1012;
+    private static final int TIMER = 500;
+    //RECEIVE
+    private int myWindowSize;
+    private int remoteSeq;
+    private int expectedSeqNum;
+    //SEND
+    private int rcvWindowSize;
+    private int localSeq;
+    private int waitingForAck;
+    //OTHER
+    private DatagramSocket socket;
+    private InetAddress destAddress;
+    private int destPort;
+    boolean debug;
+
+    public FTA_Socket(boolean debug) throws IllegalArgumentException {
+       this(-1, null, debug);
+    }
+
+    public FTA_Socket(int localPort, boolean debug) throws IllegalArgumentException {
+       this(localPort, null, debug);
+    }
+    public FTA_Socket(int localPort, InetAddress address, boolean debug) {
+        this(localPort, address, null, debug);
+    }
+
+    public FTA_Socket(int localPort, InetAddress localAddress, SocketAddress remoteAddress, boolean debug) {
+        boolean isSuccessful = false;
+        try {
+            socket = new DatagramSocket(null);
+            while (!isSuccessful) {
+                try {
+                    socket.setReuseAddress(true);
+                    isSuccessful = true;
+                } catch (SocketException e) {
+                    System.out.println("Failed to make address reusable. Retrying...");
+                }
+            }
+            if (localPort != -1 && localAddress == null) {
+                socket.bind(new InetSocketAddress(localPort));
+            } else if (localPort != -1 && localAddress != null){
+                socket.bind(new InetSocketAddress(localAddress, localPort));
+            }
+        } catch (SocketException e) {
+            e.printStackTrace();
+            System.out.println("Failed to create a socket");
+            System.exit(-1); //TODO: shouldn't we try to make socket again?
+        }
+        if (remoteAddress != null) {
+            isSuccessful = false;
+            while (!isSuccessful) {
+                try {
+                    socket.connect(remoteAddress);
+                    isSuccessful = true;
+                } catch (SocketException e) {
+                    System.out.println("Failed to connect. Retrying...");
+
+                }
+            }
+        }
+        this.debug = debug;
+        myWindowSize = 1; // default window size, unless initialized by the application
+        localSeq = 0;
+        waitingForAck = 0;
+        this.rcvWindowSize = 1;
+    }
+
+    /**
+     * Connect to remote address at specified InetAddress.
+     * Initiates a three-way handshake with teh server.
+     * Local and remote sequence numbers initialized.
+     *
+     * @param address Address of remote host.
+     * @param port Port of remote host.
+     */
+    public void connect(InetAddress address, int port) {
+        // Send SYN
+        printDebug("SENDING SYN TO SERVER");
+        //TODO: checksum?
+        FTA_Packet synPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
+        synPacketLLP.setSYNFlag(true);
+        byte[] synData = synPacketLLP.toArray();
+
+        DatagramPacket synPacket = new DatagramPacket(synData, synData.length, address, port);
+
+        while (timeoutRcv("SYN_ACK", synPacket)) {
+            ensureSend(synPacket);
+
+            // Receive SYN-ACK & initialize remote Seq Num
+            printDebug("WAITING FOR SYN-ACK FROM SERVER");
+            // TODO: Check sequence number etc. ; window allocation done around here
+        }
+        //TODO: get remote sequence number
+
+        // Send ACK
+        FTA_Packet ackPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize); // TODO: compute these values instead of hardcoded
+        ackPacketLLP.setACKFlag(true);
+        byte[] ackData = ackPacketLLP.toArray();
+        DatagramPacket ackPacket = new DatagramPacket(ackData, ackData.length, address, port);
+        do {
+            printDebug("SENDING ACK TO SERVER");
+            ensureSend(ackPacket);
+        } while (!timeoutRcv("SYN_ACK", synPacket));
+
+        FTA_Packet synReceive = FTA_Packet.parsePacket(synPacket.getData());
+        // TODO: update seq numbers
+
+        // Set the receive window
+        setRcvWindowSize(synReceive.getWindowSize());
+
+        setDestAddress(address);
+        setDestPort(port);
+        socket.connect(address, port);
+        System.out.println("CONNECTION ESTABLISHED");
+        // Connection established completed for client-side
+    }
+
+    /**
+     * Accepts a new connection.
+     * Handles server-side semantics of the three-way handshake.
+     *
+     * @return socket
+     */
+    public FTA_Socket accept() {
+        // Receive SYN
+
+        printDebug("WAITING FOR SYN FROM CLIENT");
+        // TODO: Check that packet has SYN, otherwise need to switch states / wait;
+        DatagramPacket receiveSYN = ensureRcvdFlag("SYN", null);
+        if (receiveSYN == null) {
+            printDebug("SYN is null");
+        }
+        FTA_Packet receiveSYNLLP = FTA_Packet.parsePacket(receiveSYN.getData());
+        remoteSeq = receiveSYNLLP.getSeqNum();
+
+        // Set window size for other end
+        setRcvWindowSize(receiveSYNLLP.getWindowSize());
+
+        FTA_Packet synAckPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize); // TODO: compute window size
+        synAckPacketLLP.setACKFlag(true);
+        synAckPacketLLP.setSYNFlag(true);
+        byte[] sendSYNACKData = synAckPacketLLP.toArray();
+        DatagramPacket sendPacket = new DatagramPacket(sendSYNACKData, sendSYNACKData.length,
+                receiveSYN.getAddress(), receiveSYN.getPort());
+        while (timeoutRcv("ACK", receiveSYN)) {
+            printDebug("SEND A SYN-ACK TO CLIENT");
+            // Send SYN-ACK
+            ensureSend(sendPacket);
+
+            // Receive ACK
+            printDebug("Receive ACK from Client.");
+        }
+
+        System.out.println("CONNECTION ACCEPTED");
+        FTA_Socket retSocket = new FTA_Socket(socket.getLocalPort(), socket.getLocalAddress(), receiveSYN.getSocketAddress(), debug);
+        // TODO: parse ACK and Seq Number
+        return retSocket; // TODO: Not sure what to return -- tcp normally returns connection socket
+    }
+
+    public void close() {
+        byte[] receiveData = new byte[MAX_DATA_SIZE];
+        DatagramPacket recvPacket = new DatagramPacket(receiveData, receiveData.length);
+        // Send FIN
+        printDebug("SENDING FIN");
+
+        FTA_Packet finPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
+        finPacketLLP.setFINFlag(true);
+        byte[] finArray = finPacketLLP.toArray();
+
+        DatagramPacket finPacket = new DatagramPacket(finArray, finArray.length, socket.getRemoteSocketAddress());
+        ensureSend(finPacket);
+
+        // Receive either FIN or ACK
+        printDebug("FIN-WAIT-1 STATE. WAITING FOR FIN OR ACK.");
+
+        ensureRcv(recvPacket);
+
+        byte[] trimmedRcvData = new byte[recvPacket.getLength()]; // I think getLength() returns actual packet size received
+        System.arraycopy(receiveData, 0, trimmedRcvData, 0, trimmedRcvData.length);
+        FTA_Packet recvPacktLLP = FTA_Packet.parsePacket(trimmedRcvData);
+
+        System.out.println("finpacket address:" + finPacket.getSocketAddress());
+        if (recvPacktLLP.getACKFlag() == 1) {
+            //FIN-WAIT-2
+            printDebug("ACK received. Waiting for FIN.");
+            ensureRcvdFlag("FIN", finPacket);
+            printDebug("Received FIN. Sending ACK.");
+
+            FTA_Packet ackPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
+            ackPacketLLP.setACKFlag(true);
+            byte[] ackArray = ackPacketLLP.toArray();
+            DatagramPacket ackPacket = new DatagramPacket(ackArray, finArray.length, socket.getRemoteSocketAddress());
+            ensureSend(ackPacket);
+        } else if (recvPacktLLP.getFINFlag() == 1) {
+            printDebug("FIN received. Sending ACK");
+            FTA_Packet ackPacketLLP = new FTA_Packet(localSeq, expectedSeqNum, 0, myWindowSize);
+            ackPacketLLP.setACKFlag(true);
+            byte[] ackArray = ackPacketLLP.toArray();
+            DatagramPacket ackPacket = new DatagramPacket(ackArray, finArray.length, socket.getRemoteSocketAddress());
+            ensureSend(ackPacket);
+
+            printDebug("Closing State. Waiting for ACK");
+
+            ensureRcvdFlag("ACK", finPacket);
+        }
+        //TODO: Timed-Wait or no?
+        printDebug("Timed-Wait State.");
+        socket.close();
+    }
+
+    public byte[] receive(int maxSize) {
+        // TODO: discuss whether the client should be able to specify a receive size
+
+        byte[] rawReceiveData = new byte[maxSize];
+        DatagramPacket receivePacket = new DatagramPacket(rawReceiveData, rawReceiveData.length);
+        if (!ensureRcv(receivePacket)) {
+            return "timeout".getBytes();
+        }
+
+        // create new byte array without the empty unused buffer
+        byte[] receiveData = new byte[receivePacket.getLength()];
+        System.arraycopy(rawReceiveData, 0, receiveData, 0, receiveData.length);
+        FTA_Packet receivedLLP = FTA_Packet.parsePacket(receiveData);
+
+        printDebug("Received: " + new String(receiveData));
+        // Update window size
+        setRcvWindowSize(receivedLLP.getWindowSize());
+
+        if (whichFlag(receivedLLP).equals("FIN")) {
+            recvdClose(receivePacket);
+            //TODO: Return something else?
+            return null;
+        }
+
+
+        if (!receivedLLP.isValidChecksum() || receivedLLP.getSeqNum() != this.expectedSeqNum) {
+            printDebug("PACKET DISCARDED: SEQ EXPECTED: " + this.expectedSeqNum + " RECEIVED: " + receivedLLP.getSeqNum());
+
+            FTA_Packet ackPacket = new FTA_Packet(this.localSeq, this.expectedSeqNum, 0, myWindowSize);
+            ackPacket.setACKFlag(true);
+            byte[] sendData = ackPacket.toArray();
+
+            DatagramPacket ack = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
+            ensureSend(ack);
+            return new byte[0]; // TODO: Returning empty array means client will have to check if null is returned -- is this what we want?
+        } else {
+            System.out.println("RECEIVED SEQ " + this.expectedSeqNum);
+            printDebug("RECEIVED DATA: EXPECTED SEQ: " + this.expectedSeqNum + "RECEIVED SEQ " + receivedLLP.getSeqNum());
+
+            FTA_Packet ackPacket = new FTA_Packet(this.localSeq, ++this.expectedSeqNum, 0, myWindowSize);
+            ackPacket.setACKFlag(true);
+            byte[] sendData = ackPacket.toArray();
+
+            DatagramPacket ack = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
+            ensureSend(ack);
+            String reStr = new String(receivedLLP.getData());
+
+            printDebug(reStr);
+            return receivedLLP.getData();
+        }
+    }
+
+    public void send(byte[] data) throws SocketException {
+        // Data to be sent
+        byte[] fileBuff = data;
+
+        // Sequence number of the last packet
+        int startSeqNum = this.localSeq;
+        int lastNumPackets = ((int) Math.ceil((double) fileBuff.length / MAX_DATA_SIZE));
+        System.out.println("=== PACKETS TO BE SENT: " + lastNumPackets + " ===");
+
+        // Map to store unAcknowledged packets
+        Map<Integer, DatagramPacket> sentPackets = new HashMap<>();
+
+        // While window not full and there is more data to send:
+        while(true) {
+            while (this.localSeq - waitingForAck < rcvWindowSize && this.localSeq < lastNumPackets+startSeqNum) {
+
+                // Store packet data to send
+                byte[] sendPacketBytes = null;
+                int startPos = (this.localSeq-startSeqNum)*MAX_DATA_SIZE;
+                if (startPos + MAX_DATA_SIZE > fileBuff.length) {
+                    sendPacketBytes = Arrays.copyOfRange(fileBuff, startPos, fileBuff.length); // ensure last packet has no nulls
+                } else {
+                    sendPacketBytes = Arrays.copyOfRange(fileBuff, startPos, startPos + MAX_DATA_SIZE);
+                }
+
+                FTA_Packet sendPacketLLP = new FTA_Packet(this.localSeq, ++remoteSeq, 0, myWindowSize);
+                sendPacketLLP.setData(sendPacketBytes);
+                byte[] sendData = sendPacketLLP.toArray();
+                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, destAddress, destPort);
+
+                ensureSend(sendPacket);
+                sentPackets.put(this.localSeq, sendPacket);
+
+                System.out.println("SENT DATA " + this.localSeq);
+
+                this.localSeq++;
+            }
+
+            // Receive Acks
+            byte[] ackBytes = new byte[1024];
+            DatagramPacket ackPacket = new DatagramPacket(ackBytes, ackBytes.length);
+
+            if (timeoutRcv("", ackPacket)) {
+                printDebug("Re-transmitting Packets...");
+
+                // Re-send Packets
+                for (int i = waitingForAck; i < this.localSeq; i++) {
+                    DatagramPacket resendPacket = sentPackets.get(i);
+                    printDebug("Resending packet Seq: " + i);
+                    ensureSend(resendPacket);
+                }
+            } else {
+                printDebug("packet received: " + new String(ackPacket.getData()));
+                FTA_Packet ackLLP = FTA_Packet.parsePacket(ackPacket.getData());
+                String flag = whichFlag(ackLLP);
+                if (flag.equals("ACK")) {
+                    printDebug("RECEIVED ACK FOR SEQ NUM: " + ackLLP.getAckNum());
+                    printDebug("SEQ NUM OF LAST PACKET: " + lastNumPackets);
+                    waitingForAck = Math.max(waitingForAck, ackLLP.getAckNum());
+                    // exit loop if last packet
+                    if (ackLLP.getAckNum() == lastNumPackets + startSeqNum) {
+                        System.out.println("=== SENDING COMPLETE ===");
+                        return;
+                    }
+                } else if (flag.equals("FIN")){
+                    throw new SocketException("Server closed.");
+                    // TODO: Handle this case
+                }
+            }
+
+        }
+    }
+
+    public void setMyWindowSize(int myWindowSize) {
+        this.myWindowSize = myWindowSize;
+    }
+
+    public void setDestAddress(InetAddress address) {
+        this.destAddress = address;
+    }
+
+    public void setDestPort(int port) {
+        this.destPort = port;
+    }
+    public void closeServer() {
+        socket.close();
+    }
+
+    //HELPER METHODS
+    private void ensureSend(DatagramPacket sendPckt) {
+        boolean isSuccessful = false;
+        while (!isSuccessful) {
+            try {
+                socket.send(sendPckt);
+                isSuccessful = true;
+            } catch (IOException e) {
+                printDebug("Failed to send. Retrying...");
+            }
+        }
+    }
+    private boolean ensureRcv (DatagramPacket recvPckt) {
+        boolean isSuccessful = false;
+        while (!isSuccessful) {
+            try {
+                socket.receive(recvPckt);
+                isSuccessful = true;
+                return isSuccessful;
+            } catch (SocketTimeoutException e) {
+                return false;
+            } catch (IOException e) {
+                printDebug("Failed to receive. Retrying...");
+            }
+        }
+        return isSuccessful;
+    }
+    /**
+     * Right side of State diagram when trying to close
+     * Called when either side receives FIN from the other end point
+     * */
+    private void recvdClose(DatagramPacket receivedPacket) {
+        //Received FIN. Sending ACK
+        printDebug("Received FIN. Trying to send ACK");
+
+        FTA_Packet sendPacketLLP = new FTA_Packet(localSeq, remoteSeq, 0, myWindowSize);
+        sendPacketLLP.setACKFlag(1);
+        byte[] sendData = sendPacketLLP.toArray();
+        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, socket.getRemoteSocketAddress());
+        ensureSend(sendPacket);
+
+        printDebug("Successfully sent ACK. In CLOSE-WAIT state.");
+        printDebug("Sending FIN");
+
+        sendPacketLLP = new FTA_Packet(localSeq, remoteSeq, 0, myWindowSize);
+        sendPacketLLP.setFINFlag(1);
+        sendData = sendPacketLLP.toArray();
+        sendPacket = new DatagramPacket(sendData, sendData.length, socket.getRemoteSocketAddress());
+        ensureSend(sendPacket);
+
+        printDebug("Successfully sent FIN. In LAST-ACK state.");
+
+        ensureRcvdFlag("ACK", receivedPacket);
+
+        printDebug("Received ACK for FIN. Closing...");
+        socket.close();
+    }
+
+    private String whichFlag(FTA_Packet recvPacketLLP) {
+        //In assumption that multiple flags won't be set in the same packet except syn/ack
+        if (recvPacketLLP.getACKFlag() == 1 && recvPacketLLP.getSYNFlag() == 1) {
+            return "SYN_ACK";
+        } else if (recvPacketLLP.getSYNFlag() == 1) {
+            return "SYN";
+        } else if (recvPacketLLP.getACKFlag() == 1){
+            return "ACK";
+        }
+        if (recvPacketLLP.getFINFlag() == 1) {
+            return "FIN";
+        } else {
+            //TODO: returning empty string for now
+            return "";
+        }
+    }
+    private void printDebug(String statement) {
+        if (debug) {
+            System.out.println(statement);
+        }
+    }
+
+    private DatagramPacket ensureRcvdFlag(String flag, DatagramPacket remotePacket) {
+        boolean isFlag = false;
+        boolean isFromRightClient = false;
+        byte[] trimmedRcvData;
+        FTA_Packet recvPacketLLP;
+        byte[] receiveData = new byte[MAX_DATA_SIZE];
+        DatagramPacket recvPacket = new DatagramPacket(receiveData, receiveData.length);
+
+        if (remotePacket == null) {
+            isFromRightClient = true;
+        }
+
+        while (!isFlag || !isFromRightClient) {
+            printDebug("Did not receive " + flag + ". Waiting...");
+            boolean noTimeout = ensureRcv(recvPacket);
+
+            trimmedRcvData = new byte[recvPacket.getLength()];
+            System.arraycopy(receiveData, 0, trimmedRcvData, 0, trimmedRcvData.length);
+            recvPacketLLP = FTA_Packet.parsePacket(trimmedRcvData);
+            if (!noTimeout) {
+                return null;
+            }
+            if (whichFlag(recvPacketLLP).equals(flag)) {
+                isFlag = true;
+            }
+            if (!isFromRightClient && remotePacket.getSocketAddress().equals(recvPacket.getSocketAddress())) {
+                isFromRightClient = true;
+            }
+        }
+
+        return recvPacket;
+    }
+    /**
+    * Used to set timeout and unset timeout when receiving a packet
+    * @param flag if flag is empty string, eitherPacket is receivePacket
+     * otherwise, eitherPacket is remotePacket
+    * @param eitherPacket packet that can be either receivePacket or remotePacket
+     * */
+    private boolean timeoutRcv(String flag, DatagramPacket eitherPacket) {
+        boolean isSuccessful = false;
+        boolean isTimedout;
+        while (!isSuccessful) {
+            try {
+                socket.setSoTimeout(TIMER);
+                isSuccessful = true;
+            } catch (SocketException e) {
+                printDebug("Failed to set timeout. Retrying...");
+            }
+        }
+        if (flag.equals("")) {
+            isTimedout = !ensureRcv(eitherPacket);
+        } else {
+            isTimedout = ensureRcvdFlag(flag, eitherPacket) == null;
+        }
+        isSuccessful = false;
+        while (!isSuccessful) {
+            try {
+                socket.setSoTimeout(0);
+                isSuccessful = true;
+            } catch (SocketException e) {
+                printDebug("Failed to set timeout. Retrying...");
+            }
+        }
+        return isTimedout;
+
+    }
+
+    public void setRcvWindowSize(int rcvWindowSize) {
+        printDebug("RECEIVE WINDOW SIZE SET TO: " + rcvWindowSize);
+        this.rcvWindowSize = rcvWindowSize;
+    }
+
+    //TODO: DELETE METHODS BELOW
+    public boolean isClosed() {
+        return socket.isClosed();
+    }
+
+    public void setTimeout(boolean on) {
+        int timeout = on? TIMER+1000 : 0;
+        try {
+            socket.setSoTimeout(timeout);
+        } catch (SocketException e) {
+            printDebug("Failed to set timeout");
+        }
+    }
+}
+
