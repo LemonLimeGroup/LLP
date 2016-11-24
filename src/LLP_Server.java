@@ -15,6 +15,10 @@ public  class LLP_Server {
         ArrayList<LLP_Socket> clientList =LLPThread.getClients();
         //TODO: need to fix client side so that it can receive FIN from server
         for (int iClient = 0; iClient < clientList.size(); iClient++) {
+            System.out.println("I'm inside the for loop");
+            ((LLPThread) clientThread.get(iClient)).setTerminate();
+        }
+        for (int iClient = 0; iClient < clientList.size(); iClient++) {
             clientList.remove(iClient).close();
         }
         socket.closeServer();
@@ -45,7 +49,9 @@ public  class LLP_Server {
             terminate = false;
             clients.add(conn);
         }
-
+        public void setTerminate() {
+            terminate = true;
+        }
         public static ArrayList<LLP_Socket> getClients() {
             return clients;
         }
@@ -53,8 +59,7 @@ public  class LLP_Server {
             while (!terminate) {
                 printDebug("In thread yay!");
                 byte[] bytes = conn.receive(1024);
-
-                if (bytes == null) {
+                if (terminate || bytes == null) {
                     clients.remove(conn);
                     return;
                 }
@@ -131,7 +136,7 @@ public  class LLP_Server {
                     } catch (FileNotFoundException e) {
                         try {
                             conn.send("filenotfound".getBytes());
-                        } catch (SocketException e1) {
+                        } catch (SocketException timeOut) {
                             printDebug("Failed to catch");
                         }
                         continue;
@@ -154,12 +159,7 @@ public  class LLP_Server {
                     }
                 }
             }
-        }
-        public LLP_Socket getConnSocket() {
-            return conn;
-        }
-        public void setTerminate() {
-            terminate = true;
+            System.out.println("I have terminated");
         }
     }
 

@@ -127,8 +127,8 @@ public class LLP_Client {
         } catch (FileNotFoundException e) {
             try {
                 socket.send("filenotfound".getBytes());
-            } catch (SocketException e1) {
-                e1.printStackTrace();
+            } catch (SocketException timeOut) {
+                printDebug("Sending 'filenotfound' failed.");
             }
             return;
         }
@@ -143,6 +143,7 @@ public class LLP_Client {
         try {
             socket.send(postFile);
         } catch (SocketException e) {
+            printDebug("Posting failed.");
             e.printStackTrace();
         }
 
@@ -160,6 +161,7 @@ public class LLP_Client {
         try {
             socket.send(mybytearray);
         } catch (SocketException e) {
+            printDebug("Sending failed.");
             e.printStackTrace();
         }
     }
