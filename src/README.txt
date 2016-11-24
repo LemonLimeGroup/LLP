@@ -26,11 +26,11 @@ Name & Descriptions of All Files Submitted:
                 - If the server does not have the specified file, then the client will receive
                   a response from the server that the file is not found.
                 - When the file is downloaded, it will be titled "downloaded_[filename]" and will
-                  be placed in the src/ directory.
+                  be placed in the same directory as the *.java and *.class files
 
             Command: post [filename]
                 - Upload a file named [filename] from the client to the server.
-                - The file to be uploaded must begin the src/ directory.
+                - The file to be uploaded must be in the same directory as the source files.
 
             Command: window [max_window_size]
                 - Specifies the maximum receiver's window size for the FTA_Client (in number of segments).
@@ -50,8 +50,8 @@ Name & Descriptions of All Files Submitted:
             Command: terminate
                 - Shut down the FTA_Server gracefully.
 
-    FTA_Packet.java
-        * Represents a an FTA packet. Has functions for generating and checking the checksum
+    LLP_Packet.java
+        * Represents a an LLP packet. Has functions for generating and checking the checksum
           as well as functions for getting/setting the header fields. Also has function to
           convert the header+data into a byte array to send over UDP.
 
@@ -62,15 +62,14 @@ Name & Descriptions of All Files Submitted:
 
 Compiling and Running our Program:
 
-    1. Place any images you want the client/server to use inside the src/ folder
-    2. Go into the src/ folder.
-    3. Compile the program by typing in the command:
+    1. Place any images you want the client/server to use inside the same directory as the source files
+    2. Compile the program by typing in the command:
         javac *.java
-    4. Start the FTA_Server with the command with any unused port number:
+    3. Start the FTA_Server with the command with any unused port number:
         java FTA_Server port_number
-    5. Start the FTA_Client with a valid ip_address (can be IPv4 or IPv6) and port_number of the server like so:
+    4. Start the FTA_Client with a valid ip_address (can be IPv4 or IPv6) and port_number of the server like so:
         java FTA_Client ip_address port_number
-    6. Now you can use the commands described in the file descriptions to proceed.
+    5. Now you can use the commands described in the file descriptions to proceed.
 
 Any Known Bugs and Limitations of Design/Program:
 
