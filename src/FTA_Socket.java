@@ -26,11 +26,11 @@ public class FTA_Socket {
     boolean debug;
 
     public FTA_Socket(boolean debug) throws IllegalArgumentException {
-       this(-1, null, debug);
+        this(-1, null, debug);
     }
 
     public FTA_Socket(int localPort, boolean debug) throws IllegalArgumentException {
-       this(localPort, null, debug);
+        this(localPort, null, debug);
     }
     public FTA_Socket(int localPort, InetAddress address, boolean debug) {
         this(localPort, address, null, debug);
@@ -71,9 +71,10 @@ public class FTA_Socket {
             }
         }
         this.debug = debug;
-        myWindowSize = 50; // default window size, unless initialized by the application
+        myWindowSize = 1; // default window size, unless initialized by the application
         localSeq = 0;
         waitingForAck = 0;
+        this.rcvWindowSize = 1;
     }
 
     /**
@@ -122,7 +123,7 @@ public class FTA_Socket {
         setDestAddress(address);
         setDestPort(port);
         socket.connect(address, port);
-        printDebug("CONNECTION ESTABLISHED");
+        System.out.println("CONNECTION ESTABLISHED");
         // Connection established completed for client-side
     }
 
@@ -243,7 +244,7 @@ public class FTA_Socket {
             return null;
         }
 
-        System.out.println("REMOTE SEQ " + this.expectedSeqNum);
+
         if (!receivedLLP.isValidChecksum() || receivedLLP.getSeqNum() != this.expectedSeqNum) {
             printDebug("PACKET DISCARDED: SEQ EXPECTED: " + this.expectedSeqNum + " RECEIVED: " + receivedLLP.getSeqNum());
 
@@ -255,6 +256,7 @@ public class FTA_Socket {
             ensureSend(ack);
             return new byte[0]; // TODO: Returning empty array means client will have to check if null is returned -- is this what we want?
         } else {
+            System.out.println("RECEIVED SEQ " + this.expectedSeqNum);
             printDebug("RECEIVED DATA: EXPECTED SEQ: " + this.expectedSeqNum + "RECEIVED SEQ " + receivedLLP.getSeqNum());
 
             FTA_Packet ackPacket = new FTA_Packet(this.localSeq, ++this.expectedSeqNum, 0, myWindowSize);
@@ -277,7 +279,7 @@ public class FTA_Socket {
         // Sequence number of the last packet
         int startSeqNum = this.localSeq;
         int lastNumPackets = ((int) Math.ceil((double) fileBuff.length / MAX_DATA_SIZE));
-        System.out.println("LOCAL SEQ NUM " + this.localSeq);
+        System.out.println("=== PACKETS TO BE SENT: " + lastNumPackets + " ===");
 
         // Map to store unAcknowledged packets
         Map<Integer, DatagramPacket> sentPackets = new HashMap<>();
@@ -331,7 +333,7 @@ public class FTA_Socket {
                     waitingForAck = Math.max(waitingForAck, ackLLP.getAckNum());
                     // exit loop if last packet
                     if (ackLLP.getAckNum() == lastNumPackets + startSeqNum) {
-                        printDebug("EXITING - FINISHED SENDING");
+                        System.out.println("=== SENDING COMPLETE ===");
                         return;
                     }
                 } else if (flag.equals("FIN")){
@@ -471,10 +473,10 @@ public class FTA_Socket {
         return recvPacket;
     }
     /**
-    * Used to set timeout and unset timeout when receiving a packet
-    * @param flag if flag is empty string, eitherPacket is receivePacket
+     * Used to set timeout and unset timeout when receiving a packet
+     * @param flag if flag is empty string, eitherPacket is receivePacket
      * otherwise, eitherPacket is remotePacket
-    * @param eitherPacket packet that can be either receivePacket or remotePacket
+     * @param eitherPacket packet that can be either receivePacket or remotePacket
      * */
     private boolean timeoutRcv(String flag, DatagramPacket eitherPacket) {
         boolean isSuccessful = false;
@@ -524,4 +526,3 @@ public class FTA_Socket {
         }
     }
 }
-

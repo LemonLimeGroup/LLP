@@ -91,7 +91,6 @@ public class FTA_Packet {
         }
 
         if (getData() != null) {
-            System.out.println("GET DATA LENGTH " + getData().length);
             for (int i = 0; i < data.length; i++) {
                 bitString += String.format("%8s", Integer.toBinaryString(data[i] & 0xFF)).replace(' ', '0');
             }
@@ -153,7 +152,6 @@ public class FTA_Packet {
         bitString += String.format("%10s", Integer.toBinaryString(windowSize)).replace(' ', '0');
 
         if (getData() != null) {
-            System.out.println("GET DATA LENGTH " + getData().length);
             for (int i = 0; i < data.length; i++) {
                 bitString += String.format("%8s", Integer.toBinaryString(data[i] & 0xFF)).replace(' ', '0');
             }

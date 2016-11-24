@@ -2,6 +2,7 @@ import java.io.*;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.InputMismatchException;
 import java.util.Scanner;
 
 /**
@@ -27,7 +28,7 @@ public  class FTA_Server {
     }
 
     public static void window(FTA_Socket socket, int num) {
-        printDebug("Setting window size to: " + num);
+        System.out.println("Setting window size to: " + num);
         socket.setMyWindowSize(num);
     }
     private static class LLPThread extends Thread {
@@ -51,7 +52,7 @@ public  class FTA_Server {
         }
         public void run() {
             while (!terminate) {
-                printDebug("In thread yay!");
+                printDebug("=== New Thread Started ===");
                 byte[] bytes = conn.receive(1024);
 
                 if (bytes == null) {
@@ -89,7 +90,7 @@ public  class FTA_Server {
                                 } else if (Arrays.equals(buff, "timeout".getBytes())) {
                                     // timeout
                                     printDebug("Timeout");
-                                    System.out.println("FILE DOWNLOAD COMPLETE");
+                                    System.out.println("=== FILE DOWNLOAD COMPLETE ===");
                                     eof = true;
                                 } else {
                                     out.write(buff, 0, buff.length);
@@ -177,11 +178,20 @@ public  class FTA_Server {
             clients = LLPThread.getClients();
             switch (input) {
                 case "window":
-                    int windowSz = sc.nextInt();
-                    for (int iClient = 0; iClient < clients.size(); iClient++) {
-                        window(clients.get(iClient), windowSz);
+                    try {
+                        int windowSz = sc.nextInt();
+                        if (windowSz <= 0) {
+                            System.out.println("Window size must be a positive integer.");
+                            break;
+                        }
+                        for (int iClient = 0; iClient < clients.size(); iClient++) {
+                            window(clients.get(iClient), windowSz);
+                        }
+                        break;
+                    } catch (InputMismatchException e) {
+                        System.out.println("Not a valid window size. Window size must be an integer.");
+                        break;
                     }
-                    break;
                 case "terminate":
                     terminate(serverSocket);
                     break;
