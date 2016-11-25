@@ -177,6 +177,10 @@ public class FTA_Client {
     }
 
     public static void main(String[] args) {
+        if (args.length < 2) {
+            System.out.println("Not enough input");
+            System.exit(-1);
+        }
         if (args.length > 3) {
             System.out.println("Invalid arguments");
             System.exit(-1);

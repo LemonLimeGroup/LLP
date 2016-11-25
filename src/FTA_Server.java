@@ -14,16 +14,16 @@ public  class FTA_Server {
 
     public static void terminate(LLP_Socket socket) {
         ArrayList<LLP_Socket> clientList =LLPThread.getClients();
-        //TODO: need to fix client side so that it can receive FIN from server
         for (int iClient = 0; iClient < clientList.size(); iClient++) {
+            printDebug("Setting terminate for all of the sockets connected to a client");
             ((LLPThread) clientThread.get(iClient)).setTerminate();
         }
         for (int iClient = 0; iClient < clientList.size(); iClient++) {
             clientList.remove(iClient).close();
         }
+        printDebug("Before closing server socket");
         socket.closeServer();
         printDebug("Successfully terminated the server.");
-        // TODO: lots of "Failed to receive. Retrying..." because of threading
         System.exit(0);
     }
     public static void setDebug() {
@@ -158,9 +158,6 @@ public  class FTA_Server {
                 }
             }
         }
-        public LLP_Socket getConnSocket() {
-            return conn;
-        }
         public void setTerminate() {
             terminate = true;
         }
@@ -176,33 +173,39 @@ public  class FTA_Server {
             this.serverSocket = serverSocket;
         }
         public void run() {
-            String input = sc.next().toLowerCase();
-            clients = LLPThread.getClients();
-            switch (input) {
-                case "window":
-                    try {
-                        int windowSz = sc.nextInt();
-                        if (windowSz <= 0) {
-                            System.out.println("Window size must be a positive integer.");
+            while (true) {
+                String input = sc.next().toLowerCase();
+                clients = LLPThread.getClients();
+                switch (input) {
+                    case "window":
+                        try {
+                            int windowSz = sc.nextInt();
+                            if (windowSz <= 0) {
+                                System.out.println("Window size must be a positive integer.");
+                                break;
+                            }
+                            for (int iClient = 0; iClient < clients.size(); iClient++) {
+                                window(clients.get(iClient), windowSz);
+                            }
+                            break;
+                        } catch (InputMismatchException e) {
+                            System.out.println("Not a valid window size. Window size must be an integer.");
                             break;
                         }
-                        for (int iClient = 0; iClient < clients.size(); iClient++) {
-                            window(clients.get(iClient), windowSz);
-                        }
+                    case "terminate":
+                        terminate(serverSocket);
                         break;
-                    } catch (InputMismatchException e) {
-                        System.out.println("Not a valid window size. Window size must be an integer.");
-                        break;
-                    }
-                case "terminate":
-                    terminate(serverSocket);
-                    break;
-                default:
-                    System.out.println("Command not recognized.");
+                    default:
+                        System.out.println("Command not recognized.");
+                }
             }
         }
     }
     public static void main(String[] args) {
+        if (args.length < 1) {
+            System.out.println("Not enough input");
+            System.exit(-1);
+        }
         if (args.length > 2) {
             System.out.println("Invalid arguments");
             System.exit(-1);
@@ -233,7 +236,6 @@ public  class FTA_Server {
 
         while (true) {
             LLP_Socket conn = serverSocket.accept();
-            //TODO: Multithreading
             Thread thread = new LLPThread(conn);
             printDebug("New thread");
             clientThread.add(thread);
